@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — School Access</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #E9EDE4; margin: 0; padding: 20px; }
+  .card { max-width: 440px; margin: 40px auto 0; background: #FBFAF5; border: 1px solid #D8D2BE; padding: 24px; border-radius: 4px; }
+  h1 { font-size: 20px; color: #1F4E5F; margin-top: 0; margin-bottom: 18px; }
+ 
+  .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #D8D2BE; }
+  .tab-btn {
+    flex: 1; padding: 10px; background: none; border: none; font-size: 14px;
+    color: #4A5A6B; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .tab-btn.active { color: #1F4E5F; font-weight: 700; border-bottom: 2px solid #1F4E5F; }
+ 
+  label { display: block; font-size: 13px; margin: 14px 0 4px; color: #1B2A3F; }
+  input { width: 100%; padding: 8px; border: 1px solid #C9C2A8; border-radius: 3px; font-size: 14px; box-sizing: border-box; }
+ 
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-right: 60px; }
+  .toggle-eye {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: #1F4E5F; font-size: 12px; cursor: pointer;
+    padding: 4px 6px;
+  }
+ 
+  button.primary { margin-top: 20px; width: 100%; padding: 10px; background: #1F4E5F; color: white; border: none; border-radius: 3px; font-size: 15px; cursor: pointer; }
+  button.primary:disabled { opacity: 0.6; }
+ 
+  .switch-note { margin-top: 14px; font-size: 13px; text-align: center; color: #4A5A6B; }
+  .switch-note a { color: #1F4E5F; cursor: pointer; text-decoration: underline; }
+ 
+  #message { margin-top: 14px; font-size: 13px; padding: 10px; border-radius: 3px; display: none; }
+  #message.success { background: #E1EBEA; color: #1F4E5F; display: block; }
+  #message.error { background: #F3E4E3; color: #A3273A; display: block; }
+ 
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+ 
+<div class="card">
+  <div class="tabs">
+    <button class="tab-btn active" id="tabRegisterBtn" onclick="switchTab('register')">Create Account</button>
+    <button class="tab-btn" id="tabLoginBtn" onclick="switchTab('login')">Log In</button>
+  </div>
+ 
+  <!-- REGISTER FORM -->
+  <div id="registerForm">
+    <h1>Register Your School</h1>
+ 
+    <label>School name</label>
+    <input id="reg_name" placeholder="e.g. Greenview Secondary School">
+ 
+    <label>Address</label>
+    <input id="reg_address" placeholder="Optional">
+ 
+    <label>Contact email</label>
+    <input id="reg_email" placeholder="admin@school.com">
+ 
+    <label>Contact phone</label>
+    <input id="reg_phone" placeholder="e.g. 080XXXXXXXX">
+ 
+    <label>Create a password</label>
+    <div class="password-wrap">
+      <input id="reg_password" type="password" placeholder="Choose a password">
+      <button type="button" class="toggle-eye" onclick="toggleEye('reg_password', this)">Show</button>
+    </div>
+ 
+    <button class="primary" id="registerBtn" onclick="registerSchool()">Register School</button>
+ 
+    <div class="switch-note">Already have an account? <a onclick="switchTab('login')">Log in</a></div>
+  </div>
+ 
+  <!-- LOGIN FORM -->
+  <div id="loginForm" class="hidden">
+    <h1>School Admin Login</h1>
+ 
+    <label>Email</label>
+    <input id="login_email" placeholder="admin@school.com">
+ 
+    <label>Password</label>
+    <div class="password-wrap">
+      <input id="login_password" type="password" placeholder="Your password">
+      <button type="button" class="toggle-eye" onclick="toggleEye('login_password', this)">Show</button>
+    </div>
+ 
+    <button class="primary" id="loginBtn" onclick="login()">Log In</button>
+ 
+    <div class="switch-note">Don't have an account? <a onclick="switchTab('register')">Create one</a></div>
+  </div>
+ 
+  <div id="message"></div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "PASTE_YOUR_PROJECT_URL_HERE";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
+ 
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  function switchTab(which) {
+    document.getElementById('message').style.display = 'none';
+    document.getElementById('registerForm').classList.toggle('hidden', which !== 'register');
+    document.getElementById('loginForm').classList.toggle('hidden', which !== 'login');
+    document.getElementById('tabRegisterBtn').classList.toggle('active', which === 'register');
+    document.getElementById('tabLoginBtn').classList.toggle('active', which === 'login');
+  }
+ 
+  function toggleEye(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = 'Hide';
+    } else {
+      input.type = 'password';
+      btn.textContent = 'Show';
+    }
+  }
+ 
+  function showMessage(text, isError) {
+    const msg = document.getElementById('message');
+    msg.className = isError ? 'error' : 'success';
+    msg.textContent = text;
+  }
+ 
+  async function registerSchool() {
+    const name = document.getElementById('reg_name').value.trim();
+    const address = document.getElementById('reg_address').value.trim();
+    const contact_email = document.getElementById('reg_email').value.trim();
+    const contact_phone = document.getElementById('reg_phone').value.trim();
+    const password = document.getElementById('reg_password').value;
+    const btn = document.getElementById('registerBtn');
+ 
+    if (!name || !contact_email || !password) {
+      showMessage('Please fill in at least school name, contact email, and password.', true);
+      return;
+    }
+ 
+    btn.disabled = true;
+    btn.textContent = 'Registering…';
+ 
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+      email: contact_email,
+      password: password
+    });
+ 
+    if (authError) {
+      btn.disabled = false;
+      btn.textContent = 'Register School';
+      showMessage('Login creation error: ' + authError.message, true);
+      return;
+    }
+ 
+    const { error } = await supabaseClient
+      .from('schools')
+      .insert([{ name, address, contact_email, contact_phone, admin_user_id: authData.user.id }]);
+ 
+    btn.disabled = false;
+    btn.textContent = 'Register School';
+ 
+    if (error) {
+      showMessage('Error saving school: ' + error.message, true);
+      return;
+    }
+ 
+    // If email confirmation is off, signUp already logs the user in — take them straight to the dashboard.
+    if (authData.session) {
+      showMessage('School registered! Redirecting to your dashboard…', false);
+      window.location.href = 'dashboard.html';
+    } else {
+      showMessage('School registered! Please check your email to confirm, then log in.', false);
+      switchTab('login');
+    }
+  }
+ 
+  async function login() {
+    const email = document.getElementById('login_email').value.trim();
+    const password = document.getElementById('login_password').value;
+    const btn = document.getElementById('loginBtn');
+ 
+    if (!email || !password) {
+      showMessage('Please enter your email and password.', true);
+      return;
+    }
+ 
+    btn.disabled = true;
+    btn.textContent = 'Logging in…';
+ 
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+ 
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+ 
+    if (error) {
+      showMessage('Error: ' + error.message, true);
+    } else {
+      showMessage('Logged in! Redirecting…', false);
+      window.location.href = 'dashboard.html';
+    }
+  }
+</script>
+ 
+</body>
+</html>

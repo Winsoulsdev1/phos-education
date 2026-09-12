@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — School Registration</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #E9EDE4; margin: 0; padding: 20px; }
+  .card { max-width: 480px; margin: 40px auto 0; background: #FBFAF5; border: 1px solid #D8D2BE; padding: 24px; border-radius: 4px; }
+  h1 { font-size: 20px; color: #1F4E5F; margin-top: 0; }
+  label { display: block; font-size: 13px; margin: 14px 0 4px; color: #1B2A3F; }
+  input { width: 100%; padding: 8px; border: 1px solid #C9C2A8; border-radius: 3px; font-size: 14px; box-sizing: border-box; }
+ 
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-right: 60px; }
+  .toggle-eye {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: #1F4E5F; font-size: 12px; cursor: pointer;
+    padding: 4px 6px;
+  }
+ 
+  button.primary { margin-top: 20px; width: 100%; padding: 10px; background: #1F4E5F; color: white; border: none; border-radius: 3px; font-size: 15px; cursor: pointer; }
+  button.primary:disabled { opacity: 0.6; }
+ 
+  .switch-note { margin-top: 14px; font-size: 13px; text-align: center; color: #4A5A6B; }
+  .switch-note a { color: #1F4E5F; }
+ 
+  #message { margin-top: 14px; font-size: 13px; padding: 10px; border-radius: 3px; display: none; }
+  #message.success { background: #E1EBEA; color: #1F4E5F; display: block; }
+  #message.error { background: #F3E4E3; color: #A3273A; display: block; }
+</style>
+</head>
+<body>
+ 
+<div class="card">
+  <h1>Register Your School</h1>
+ 
+  <label>School name</label>
+  <input id="name" placeholder="e.g. Greenview Secondary School">
+ 
+  <label>Address</label>
+  <input id="address" placeholder="Optional">
+ 
+  <label>Contact email</label>
+  <input id="contact_email" placeholder="admin@school.com">
+ 
+  <label>Contact phone</label>
+  <input id="contact_phone" placeholder="e.g. 080XXXXXXXX">
+ 
+  <label>Create a password</label>
+  <div class="password-wrap">
+    <input id="password" type="password" placeholder="Choose a password">
+    <button type="button" class="toggle-eye" onclick="toggleEye('password', this)">Show</button>
+  </div>
+ 
+  <button class="primary" id="submitBtn" onclick="registerSchool()">Register School</button>
+ 
+  <div class="switch-note">Already have an account? <a href="login.html">Log in</a></div>
+ 
+  <div id="message"></div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+ 
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  function toggleEye(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
+    else { input.type = 'password'; btn.textContent = 'Show'; }
+  }
+ 
+  async function registerSchool() {
+    const name = document.getElementById('name').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const contact_email = document.getElementById('contact_email').value.trim();
+    const contact_phone = document.getElementById('contact_phone').value.trim();
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('message');
+    const btn = document.getElementById('submitBtn');
+ 
+    if (!name || !contact_email || !password) {
+      msg.className = 'error';
+      msg.textContent = 'Please fill in at least the school name, contact email, and password.';
+      return;
+    }
+ 
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(contact_email)) {
+      msg.className = 'error';
+      msg.textContent = 'Please enter a valid email address (e.g. name@example.com).';
+      return;
+    }
+ 
+    btn.disabled = true;
+    btn.textContent = 'Registering…';
+ 
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+      email: contact_email,
+      password: password
+    });
+ 
+    if (authError) {
+      btn.disabled = false;
+      btn.textContent = 'Register School';
+      msg.className = 'error';
+      msg.textContent = 'Login creation error: ' + authError.message;
+      return;
+    }
+ 
+    const { error } = await supabaseClient
+      .from('schools')
+      .insert([{ name, address, contact_email, contact_phone, admin_user_id: authData.user.id }]);
+ 
+    btn.disabled = false;
+    btn.textContent = 'Register School';
+ 
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Error saving school: ' + error.message;
+      return;
+    }
+ 
+    msg.className = 'success';
+    if (authData.session) {
+      msg.textContent = 'School registered! Redirecting to your dashboard…';
+      window.location.href = 'dashboard.html';
+    } else {
+      msg.textContent = 'School registered! Redirecting to login…';
+      setTimeout(function () { window.location.href = 'login.html'; }, 1200);
+    }
+  }
+</script>
+ 
+</body>
+</html>

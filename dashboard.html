@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — School Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EEF1EC; margin: 0; color: #1B2A3F; }
+  .topbar {
+    background: #1F4E5F; color: #FBFAF5; padding: 14px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .topbar .brand { font-weight: 700; font-size: 15px; letter-spacing: 0.3px; }
+  .topbar nav a, .topbar nav button {
+    color: #EAF1F0; text-decoration: none; font-size: 13px; margin-left: 18px;
+    background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px;
+    border-radius: 4px; cursor: pointer;
+  }
+  .topbar nav a:hover, .topbar nav button:hover { background: rgba(255,255,255,0.12); }
+ 
+  .page { max-width: 640px; margin: 32px auto; padding: 0 20px; }
+  .card { background: #FBFAF5; border: 1px solid #D8D2BE; border-radius: 6px; padding: 26px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); }
+  h1 { font-size: 22px; color: #1F4E5F; margin: 0 0 18px; }
+  .field-grid { display: grid; grid-template-columns: 140px 1fr; row-gap: 10px; font-size: 14px; }
+  .field-grid strong { color: #4A5A6B; font-weight: 600; }
+ 
+  label { display: block; font-size: 13px; margin: 12px 0 4px; color: #1B2A3F; }
+  input { width: 100%; padding: 9px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+ 
+  .row { display: flex; gap: 10px; margin-top: 18px; }
+  button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  button.btn-outline { background: none; border: 1px solid #1F4E5F; color: #1F4E5F; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+ 
+  #loading, #notLoggedIn { text-align: center; color: #4A5A6B; padding: 60px 0; }
+  #editMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
+  #editMsg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
+  #editMsg.error { background: #F3E4E3; color: #A3273A; display: block; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+ 
+<div class="topbar">
+  <div class="brand">PHOS AI Education</div>
+  <nav>
+    <a href="teachers.html">Teachers</a>
+    <button onclick="logout()">Log Out</button>
+  </nav>
+</div>
+ 
+<div class="page">
+  <div id="loading">Loading your school…</div>
+  <div id="notLoggedIn" style="display:none;" class="card">
+    You're not logged in. <a href="login.html">Go to login</a>
+  </div>
+ 
+  <div id="dashboardContent" style="display:none;" class="card">
+ 
+    <div id="viewMode">
+      <h1 id="schoolName"></h1>
+      <div class="field-grid">
+        <strong>Address</strong><span id="schoolAddress"></span>
+        <strong>Contact email</strong><span id="schoolEmail"></span>
+        <strong>Contact phone</strong><span id="schoolPhone"></span>
+      </div>
+      <div class="row">
+        <button class="btn-outline" onclick="startEdit()">Edit School Info</button>
+      </div>
+    </div>
+ 
+    <div id="editModeBox" class="hidden">
+      <h1>Edit School Info</h1>
+      <label>School name</label>
+      <input id="edit_name">
+      <label>Address</label>
+      <input id="edit_address">
+      <label>Contact email</label>
+      <input id="edit_contact_email">
+      <label>Contact phone</label>
+      <input id="edit_contact_phone">
+      <div class="row">
+        <button class="btn-primary" onclick="saveEdit()">Save Changes</button>
+        <button class="btn-outline" onclick="cancelEdit()">Cancel</button>
+      </div>
+      <div id="editMsg"></div>
+    </div>
+ 
+  </div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+ 
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  let currentSchool = null;
+ 
+  async function loadDashboard() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+ 
+    if (!user) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    const { data, error } = await supabaseClient
+      .from('schools')
+      .select('*')
+      .eq('admin_user_id', user.id)
+      .maybeSingle();
+ 
+    document.getElementById('loading').style.display = 'none';
+ 
+    if (error) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      document.getElementById('notLoggedIn').textContent = 'Could not load your school: ' + error.message;
+      return;
+    }
+    if (!data) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      document.getElementById('notLoggedIn').textContent = 'This login isn\'t linked to a school admin account. If you\'re a teacher, use teacher-dashboard.html instead.';
+      return;
+    }
+ 
+    currentSchool = data;
+    renderView();
+    document.getElementById('dashboardContent').style.display = 'block';
+  }
+ 
+  function renderView() {
+    document.getElementById('schoolName').textContent = currentSchool.name;
+    document.getElementById('schoolAddress').textContent = currentSchool.address || '—';
+    document.getElementById('schoolEmail').textContent = currentSchool.contact_email || '—';
+    document.getElementById('schoolPhone').textContent = currentSchool.contact_phone || '—';
+  }
+ 
+  function startEdit() {
+    document.getElementById('edit_name').value = currentSchool.name || '';
+    document.getElementById('edit_address').value = currentSchool.address || '';
+    document.getElementById('edit_contact_email').value = currentSchool.contact_email || '';
+    document.getElementById('edit_contact_phone').value = currentSchool.contact_phone || '';
+    document.getElementById('viewMode').classList.add('hidden');
+    document.getElementById('editModeBox').classList.remove('hidden');
+  }
+ 
+  function cancelEdit() {
+    document.getElementById('viewMode').classList.remove('hidden');
+    document.getElementById('editModeBox').classList.add('hidden');
+    document.getElementById('editMsg').style.display = 'none';
+  }
+ 
+  async function saveEdit() {
+    const name = document.getElementById('edit_name').value.trim();
+    const address = document.getElementById('edit_address').value.trim();
+    const contact_email = document.getElementById('edit_contact_email').value.trim();
+    const contact_phone = document.getElementById('edit_contact_phone').value.trim();
+    const msg = document.getElementById('editMsg');
+ 
+    if (!name || !contact_email) {
+      msg.className = 'error';
+      msg.textContent = 'School name and contact email are required.';
+      return;
+    }
+ 
+    const { data: { user } } = await supabaseClient.auth.getUser();
+ 
+    const { error } = await supabaseClient
+      .from('schools')
+      .update({ name, address, contact_email, contact_phone })
+      .eq('admin_user_id', user.id);
+ 
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Error saving: ' + error.message;
+      return;
+    }
+ 
+    currentSchool = { ...currentSchool, name, address, contact_email, contact_phone };
+    renderView();
+    msg.className = 'success';
+    msg.textContent = 'Saved!';
+    setTimeout(cancelEdit, 800);
+  }
+ 
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'login.html';
+  }
+ 
+  loadDashboard();
+</script>
+ 
+</body>
+</html>

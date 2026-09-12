@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — Login</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EEF1EC; margin: 0; padding: 20px; }
+  .card { max-width: 400px; margin: 70px auto 0; background: #FBFAF5; border: 1px solid #D8D2BE; padding: 26px; border-radius: 6px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); }
+  h1 { font-size: 20px; color: #1F4E5F; margin-top: 0; }
+  label { display: block; font-size: 13px; margin: 14px 0 4px; color: #1B2A3F; }
+  input { width: 100%; padding: 9px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+ 
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-right: 60px; }
+  .toggle-eye {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: #1F4E5F; font-size: 12px; cursor: pointer; padding: 4px 6px;
+  }
+ 
+  button.primary { margin-top: 20px; width: 100%; padding: 10px; background: #1F4E5F; color: white; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; }
+  button.primary:disabled { opacity: 0.6; }
+ 
+  .forgot-link { display: block; text-align: right; font-size: 12px; margin-top: 6px; }
+  .forgot-link a { color: #1F4E5F; cursor: pointer; text-decoration: underline; }
+ 
+  .switch-note { margin-top: 16px; font-size: 13px; text-align: center; color: #4A5A6B; }
+  .switch-note a { color: #1F4E5F; }
+ 
+  #message { margin-top: 14px; font-size: 13px; padding: 10px; border-radius: 4px; display: none; }
+  #message.success { background: #E1EBEA; color: #1F4E5F; display: block; }
+  #message.error { background: #F3E4E3; color: #A3273A; display: block; }
+ 
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+ 
+<div class="card">
+ 
+  <div id="loginBox">
+    <h1>Log In</h1>
+ 
+    <label>Email</label>
+    <input id="email" placeholder="you@school.com">
+ 
+    <label>Password</label>
+    <div class="password-wrap">
+      <input id="password" type="password" placeholder="Your password">
+      <button type="button" class="toggle-eye" onclick="toggleEye('password', this)">Show</button>
+    </div>
+    <span class="forgot-link"><a onclick="showForgot()">Forgot password?</a></span>
+ 
+    <button class="primary" id="loginBtn" onclick="login()">Log In</button>
+ 
+    <div class="switch-note">Don't have an account? <a href="school_registration.html">Register your school</a></div>
+  </div>
+ 
+  <div id="forgotBox" class="hidden">
+    <h1>Reset Password</h1>
+    <label>Enter your account email</label>
+    <input id="forgot_email" placeholder="you@school.com">
+    <button class="primary" id="forgotBtn" onclick="sendReset()">Send Reset Link</button>
+    <div class="switch-note"><a onclick="showLogin()">Back to login</a></div>
+  </div>
+ 
+  <div id="message"></div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+ 
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  function toggleEye(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
+    else { input.type = 'password'; btn.textContent = 'Show'; }
+  }
+ 
+  function showForgot() {
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('forgotBox').classList.remove('hidden');
+    document.getElementById('message').style.display = 'none';
+  }
+  function showLogin() {
+    document.getElementById('forgotBox').classList.add('hidden');
+    document.getElementById('loginBox').classList.remove('hidden');
+    document.getElementById('message').style.display = 'none';
+  }
+ 
+  async function sendReset() {
+    const email = document.getElementById('forgot_email').value.trim();
+    const msg = document.getElementById('message');
+    const btn = document.getElementById('forgotBtn');
+ 
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      msg.className = 'error';
+      msg.textContent = 'Please enter a valid email address.';
+      return;
+    }
+ 
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+ 
+    // Note: the emailed link only works once this site has a real, permanent
+    // web address (after deployment) — it won't work from a local file.
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.href.replace('login.html', 'reset-password.html')
+    });
+ 
+    btn.disabled = false;
+    btn.textContent = 'Send Reset Link';
+ 
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Error: ' + error.message;
+    } else {
+      msg.className = 'success';
+      msg.textContent = 'If an account exists for that email, a reset link has been sent.';
+    }
+  }
+ 
+  async function login() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('message');
+    const btn = document.getElementById('loginBtn');
+ 
+    if (!email || !password) {
+      msg.className = 'error';
+      msg.textContent = 'Please enter your email and password.';
+      return;
+    }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      msg.className = 'error';
+      msg.textContent = 'Please enter a valid email address.';
+      return;
+    }
+ 
+    btn.disabled = true;
+    btn.textContent = 'Logging in…';
+ 
+    const { data: signInData, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+ 
+    if (error) {
+      btn.disabled = false;
+      btn.textContent = 'Log In';
+      msg.className = 'error';
+      msg.innerHTML = 'Error: ' + error.message + ' — <a style="color:#A3273A;text-decoration:underline;cursor:pointer" onclick="showForgot()">forgot your password?</a>';
+      return;
+    }
+ 
+    msg.className = 'success';
+    msg.textContent = 'Logged in! Redirecting…';
+ 
+    const userId = signInData.user.id;
+ 
+    const { data: schoolMatch } = await supabaseClient
+      .from('schools')
+      .select('id')
+      .eq('admin_user_id', userId)
+      .maybeSingle();
+ 
+    if (schoolMatch) {
+      window.location.href = 'dashboard.html';
+      return;
+    }
+ 
+    const { data: teacherMatch } = await supabaseClient
+      .from('teachers')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+ 
+    if (teacherMatch) {
+      window.location.href = 'teacher-dashboard.html';
+      return;
+    }
+ 
+    btn.disabled = false;
+    btn.textContent = 'Log In';
+    msg.className = 'error';
+    msg.textContent = 'Logged in, but no matching school or teacher account was found.';
+  }
+</script>
+ 
+</body>
+</html>
+ 

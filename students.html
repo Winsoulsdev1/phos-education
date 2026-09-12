@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — Students</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EEF1EC; margin: 0; color: #1B2A3F; }
+  .topbar { background: #1F4E5F; color: #FBFAF5; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar .brand { font-weight: 700; font-size: 15px; }
+  .topbar nav a, .topbar nav button { color: #EAF1F0; text-decoration: none; font-size: 13px; margin-left: 18px; background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+  .topbar nav a:hover, .topbar nav button:hover { background: rgba(255,255,255,0.12); }
+  .page { max-width: 640px; margin: 32px auto; padding: 0 20px; }
+  .card { background: #FBFAF5; border: 1px solid #D8D2BE; border-radius: 6px; padding: 22px 24px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); margin-bottom: 18px; }
+  h1 { font-size: 19px; color: #1F4E5F; margin: 0 0 4px; }
+  .subhead { font-size: 12.5px; color: #4A5A6B; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; margin: 10px 0 4px; }
+  input { width: 100%; padding: 8px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 7px 6px; border-bottom: 2px solid #1F4E5F; color: #4A5A6B; font-size: 10.5px; text-transform: uppercase; }
+  td { padding: 8px 6px; border-bottom: 1px solid #E5DFC9; }
+  button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 14px; }
+  #msg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
+  #msg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
+  #msg.error { background: #F3E4E3; color: #A3273A; display: block; }
+  #loading, #notLoggedIn { text-align: center; color: #4A5A6B; padding: 60px 0; }
+  .empty-note { font-size: 13px; color: #4A5A6B; font-style: italic; padding: 8px 0; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+ 
+<div class="topbar">
+  <div class="brand">PHOS AI Education</div>
+  <nav>
+    <a href="teacher-dashboard.html">Dashboard</a>
+    <button onclick="logout()">Log Out</button>
+  </nav>
+</div>
+ 
+<div class="page">
+  <div id="loading">Loading…</div>
+  <div id="notLoggedIn" style="display:none;" class="card">
+    You're not logged in, or this account isn't linked to a teacher. <a href="login.html">Go to login</a>
+  </div>
+ 
+  <div id="content" style="display:none;">
+    <div class="card">
+      <h1>Students</h1>
+      <div class="subhead" id="classLabel"></div>
+      <table><thead><tr><th>Name</th><th>Admission No.</th></tr></thead><tbody id="rows"></tbody></table>
+      <div id="emptyNote" class="empty-note hidden">No students added yet.</div>
+    </div>
+ 
+    <div class="card">
+      <h1>Add a Student</h1>
+      <label>Student's name</label>
+      <input id="s_name" placeholder="e.g. Daniel Okafor">
+      <label>Admission number (optional)</label>
+      <input id="s_admission" placeholder="e.g. GS/2026/014">
+      <button class="btn-primary" onclick="addStudent()">Add Student</button>
+      <div id="msg"></div>
+    </div>
+  </div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+ 
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  let currentTeacher = null;
+ 
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+ 
+  async function init() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+ 
+    if (!user) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    const { data: teacherData, error: teacherError } = await supabaseClient
+      .from('teachers')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+ 
+    document.getElementById('loading').style.display = 'none';
+ 
+    if (teacherError || !teacherData) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    currentTeacher = teacherData;
+    document.getElementById('classLabel').textContent = (teacherData.class_name || 'Your class') + ' · students you can see and add';
+    document.getElementById('content').style.display = 'block';
+    loadStudents();
+  }
+ 
+  async function loadStudents() {
+    const { data, error } = await supabaseClient
+      .from('students')
+      .select('*')
+      .eq('school_id', currentTeacher.school_id)
+      .eq('class_name', currentTeacher.class_name);
+ 
+    const rows = document.getElementById('rows');
+    rows.innerHTML = '';
+    const emptyNote = document.getElementById('emptyNote');
+ 
+    if (error) {
+      emptyNote.classList.remove('hidden');
+      emptyNote.textContent = 'Error loading students: ' + error.message;
+      return;
+    }
+    if (!data || !data.length) {
+      emptyNote.classList.remove('hidden');
+      emptyNote.textContent = 'No students added yet.';
+      return;
+    }
+    emptyNote.classList.add('hidden');
+ 
+    data.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + escapeHtml(s.name) + '</td><td>' + escapeHtml(s.admission_number || '—') + '</td>';
+      rows.appendChild(tr);
+    });
+  }
+ 
+  async function addStudent() {
+    const name = document.getElementById('s_name').value.trim();
+    const admission_number = document.getElementById('s_admission').value.trim();
+    const msg = document.getElementById('msg');
+ 
+    if (!name) {
+      msg.className = 'error';
+      msg.textContent = 'Student name is required.';
+      return;
+    }
+ 
+    const { error } = await supabaseClient
+      .from('students')
+      .insert([{ school_id: currentTeacher.school_id, class_name: currentTeacher.class_name, name, admission_number }]);
+ 
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Error saving student: ' + error.message;
+      return;
+    }
+ 
+    msg.className = 'success';
+    msg.textContent = 'Student added.';
+    document.getElementById('s_name').value = '';
+    document.getElementById('s_admission').value = '';
+    loadStudents();
+  }
+ 
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'login.html';
+  }
+ 
+  init();
+</script>
+ 
+</body>
+</html>

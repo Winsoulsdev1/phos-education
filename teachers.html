@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — Teachers</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EEF1EC; margin: 0; color: #1B2A3F; }
+  .topbar {
+    background: #1F4E5F; color: #FBFAF5; padding: 14px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .topbar .brand { font-weight: 700; font-size: 15px; letter-spacing: 0.3px; }
+  .topbar nav a, .topbar nav button {
+    color: #EAF1F0; text-decoration: none; font-size: 13px; margin-left: 18px;
+    background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px;
+    border-radius: 4px; cursor: pointer;
+  }
+  .topbar nav a:hover, .topbar nav button:hover { background: rgba(255,255,255,0.12); }
+ 
+  .page { max-width: 680px; margin: 32px auto; padding: 0 20px; }
+  .card { background: #FBFAF5; border: 1px solid #D8D2BE; border-radius: 6px; padding: 26px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); margin-bottom: 20px; }
+  h1 { font-size: 20px; color: #1F4E5F; margin: 0 0 16px; }
+ 
+  label { display: block; font-size: 13px; margin: 12px 0 4px; color: #1B2A3F; }
+  input { width: 100%; padding: 9px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+ 
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 6px; border-bottom: 2px solid #1F4E5F; color: #4A5A6B; font-size: 11px; text-transform: uppercase; }
+  td { padding: 8px 6px; border-bottom: 1px solid #E5DFC9; }
+  .subject-tag {
+    display: inline-block; background: #E1EBEA; color: #1F4E5F; font-size: 11px;
+    padding: 2px 8px; border-radius: 10px; margin: 2px 3px 2px 0;
+  }
+ 
+  button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 18px; }
+  #teacherMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
+  #teacherMsg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
+  #teacherMsg.error { background: #F3E4E3; color: #A3273A; display: block; }
+  #loading, #notLoggedIn { text-align: center; color: #4A5A6B; padding: 60px 0; }
+  .hidden { display: none; }
+  .empty-note { font-size: 13px; color: #4A5A6B; font-style: italic; padding: 10px 0; }
+</style>
+</head>
+<body>
+ 
+<div class="topbar">
+  <div class="brand">PHOS AI Education</div>
+  <nav>
+    <a href="dashboard.html">Dashboard</a>
+    <button onclick="logout()">Log Out</button>
+  </nav>
+</div>
+ 
+<div class="page">
+  <div id="loading">Loading…</div>
+  <div id="notLoggedIn" style="display:none;" class="card">
+    You're not logged in. <a href="login.html">Go to login</a>
+  </div>
+ 
+  <div id="content" style="display:none;">
+    <div class="card">
+      <h1>Teachers</h1>
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Subjects</th></tr></thead>
+        <tbody id="teacherRows"></tbody>
+      </table>
+      <div id="emptyNote" class="empty-note hidden">No teachers added yet.</div>
+    </div>
+ 
+    <div class="card">
+      <h1>Add a Teacher</h1>
+      <label>Teacher's name</label>
+      <input id="t_name" placeholder="e.g. Mrs. Adebayo">
+      <label>Email</label>
+      <input id="t_email" placeholder="teacher@school.com">
+      <label>Phone</label>
+      <input id="t_phone" placeholder="Optional">
+      <label>Subject(s)</label>
+      <input id="t_subject" placeholder="e.g. Mathematics, Physics">
+      <label>Class taught</label>
+      <input id="t_class" placeholder="e.g. JSS1">
+      <label>Temporary password</label>
+      <input id="t_password" type="password" placeholder="Give this to the teacher">
+      <button class="btn-primary" onclick="addTeacher()">Add Teacher</button>
+      <div id="teacherMsg"></div>
+    </div>
+  </div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+ 
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  // Separate, non-session-persisting client used only for creating teacher
+  // logins, so the admin's own session is never disturbed.
+  const supabaseAdminAction = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+ 
+  let currentSchool = null;
+ 
+  async function init() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+ 
+    if (!user) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    const { data, error } = await supabaseClient
+      .from('schools')
+      .select('*')
+      .eq('admin_user_id', user.id)
+      .maybeSingle();
+ 
+    document.getElementById('loading').style.display = 'none';
+ 
+    if (error || !data) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      document.getElementById('notLoggedIn').textContent = 'This page is for school admins only.';
+      return;
+    }
+ 
+    currentSchool = data;
+    document.getElementById('content').style.display = 'block';
+    loadTeachers();
+  }
+ 
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+ 
+  function subjectTags(subjectString) {
+    if (!subjectString) return '—';
+    return subjectString.split(',').map(s => s.trim()).filter(Boolean)
+      .map(s => '<span class="subject-tag">' + escapeHtml(s) + '</span>').join('');
+  }
+ 
+  async function loadTeachers() {
+    const { data, error } = await supabaseClient
+      .from('teachers')
+      .select('*')
+      .eq('school_id', currentSchool.id);
+ 
+    const rows = document.getElementById('teacherRows');
+    rows.innerHTML = '';
+    const emptyNote = document.getElementById('emptyNote');
+ 
+    if (error) {
+      emptyNote.classList.remove('hidden');
+      emptyNote.textContent = 'Error loading teachers: ' + error.message;
+      return;
+    }
+    if (!data || !data.length) {
+      emptyNote.classList.remove('hidden');
+      emptyNote.textContent = 'No teachers added yet.';
+      return;
+    }
+    emptyNote.classList.add('hidden');
+ 
+    data.forEach(t => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + escapeHtml(t.name) + '</td><td>' + escapeHtml(t.email) + '</td><td>' + subjectTags(t.subject) + '</td>';
+      rows.appendChild(tr);
+    });
+  }
+ 
+  async function addTeacher() {
+    const name = document.getElementById('t_name').value.trim();
+    const email = document.getElementById('t_email').value.trim();
+    const phone = document.getElementById('t_phone').value.trim();
+    const subject = document.getElementById('t_subject').value.trim();
+    const class_name = document.getElementById('t_class').value.trim();
+    const password = document.getElementById('t_password').value;
+    const msg = document.getElementById('teacherMsg');
+ 
+    if (!name || !email || !password) {
+      msg.className = 'error';
+      msg.textContent = 'Name, email, and a temporary password are required.';
+      return;
+    }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      msg.className = 'error';
+      msg.textContent = 'Please enter a valid email address.';
+      return;
+    }
+ 
+    const { data: authData, error: authError } = await supabaseAdminAction.auth.signUp({ email, password });
+ 
+    if (authError) {
+      msg.className = 'error';
+      msg.textContent = 'Error creating login: ' + authError.message;
+      return;
+    }
+ 
+    const { error } = await supabaseClient
+      .from('teachers')
+      .insert([{ school_id: currentSchool.id, user_id: authData.user.id, name, email, phone, subject, class_name }]);
+ 
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Error saving teacher: ' + error.message;
+      return;
+    }
+ 
+    msg.className = 'success';
+    msg.textContent = 'Teacher added! Give them their email and temporary password to log in.';
+    document.getElementById('t_name').value = '';
+    document.getElementById('t_email').value = '';
+    document.getElementById('t_phone').value = '';
+    document.getElementById('t_subject').value = '';
+    document.getElementById('t_class').value = '';
+    document.getElementById('t_password').value = '';
+    loadTeachers();
+  }
+ 
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'login.html';
+  }
+ 
+  init();
+</script>
+ 
+</body>
+</html>
+ 
