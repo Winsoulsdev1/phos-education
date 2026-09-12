@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — Assessments</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EEF1EC; margin: 0; color: #1B2A3F; }
+  .topbar { background: #1F4E5F; color: #FBFAF5; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar .brand { font-weight: 700; font-size: 15px; }
+  .topbar nav a, .topbar nav button { color: #EAF1F0; text-decoration: none; font-size: 13px; margin-left: 18px; background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+  .page { max-width: 780px; margin: 32px auto; padding: 0 20px; }
+  .card { background: #FBFAF5; border: 1px solid #D8D2BE; border-radius: 6px; padding: 22px 24px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); margin-bottom: 18px; }
+  h1 { font-size: 19px; color: #1F4E5F; margin: 0 0 4px; }
+  .subhead { font-size: 12.5px; color: #4A5A6B; margin-bottom: 16px; }
+  label { display: block; font-size: 13px; margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 8px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 7px 6px; border-bottom: 2px solid #1F4E5F; color: #4A5A6B; font-size: 10.5px; text-transform: uppercase; }
+  td { padding: 8px 6px; border-bottom: 1px solid #E5DFC9; vertical-align: top; }
+  .score-input { width: 60px; padding: 5px; border: 1px solid #C9C2A8; border-radius: 4px; text-align: center; }
+  .score-input.attention { color: #A3273A; background: #FCF6F6; }
+  .score-input.strength { color: #1F4E5F; background: #F5F9F6; }
+  button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  button.btn-outline { background: none; border: 1px solid #1F4E5F; color: #1F4E5F; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .insight-card { margin-top: 6px; padding: 8px 10px; font-size: 12px; border-radius: 4px; }
+  .insight-card.strength { background: #E1EBEA; color: #1F4E5F; }
+  .insight-card.attention { background: #F3E4E3; color: #A3273A; }
+  #msg, #createMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
+  #msg.success, #createMsg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
+  #msg.error, #createMsg.error { background: #F3E4E3; color: #A3273A; display: block; }
+  #loading, #notLoggedIn { text-align: center; color: #4A5A6B; padding: 60px 0; }
+  .hidden { display: none; }
+  .empty-note { font-size: 13px; color: #4A5A6B; font-style: italic; padding: 8px 0; }
+</style>
+</head>
+<body>
+ 
+<div class="topbar">
+  <div class="brand">PHOS AI Education</div>
+  <nav>
+    <a href="students.html">Students</a>
+    <a href="teacher-dashboard.html">Dashboard</a>
+    <button onclick="logout()">Log Out</button>
+  </nav>
+</div>
+ 
+<div class="page">
+  <div id="loading">Loading…</div>
+  <div id="notLoggedIn" style="display:none;" class="card">
+    You're not logged in, or this account isn't linked to a teacher. <a href="login.html">Go to login</a>
+  </div>
+ 
+  <div id="content" style="display:none;">
+ 
+    <div class="card">
+      <h1>Assessments</h1>
+      <div class="subhead" id="classLabel"></div>
+      <label>Choose an assessment</label>
+      <select id="assessmentSelect" onchange="onSelectAssessment()"></select>
+    </div>
+ 
+    <div class="card">
+      <h2 style="font-size:14px;color:#1F4E5F;margin:0 0 10px;">Create New Assessment</h2>
+      <label>Assessment name</label>
+      <input id="newAssessmentName" placeholder="e.g. Assessment 2">
+      <label>Topics (comma-separated)</label>
+      <input id="newAssessmentTopics" placeholder="e.g. Algebra, Simultaneous Equations">
+      <div style="margin-top:12px;"><button class="btn-primary" onclick="createAssessment()">Create Assessment</button></div>
+      <div id="createMsg"></div>
+    </div>
+ 
+    <div class="card" id="registerCard" style="display:none;">
+      <h2 style="font-size:14px;color:#1F4E5F;margin:0 0 10px;">Enter Scores</h2>
+      <table><thead><tr id="registerHead"></tr></thead><tbody id="registerRows"></tbody></table>
+      <div id="emptyNote" class="empty-note hidden">No students found for this class yet — add them on the Students page.</div>
+      <div style="margin-top:14px;"><button class="btn-primary" onclick="saveScores()">Save Scores</button></div>
+      <div id="msg"></div>
+    </div>
+ 
+  </div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+ 
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  let currentTeacher = null;
+  let students = [];
+  let assessments = [];
+  let currentAssessment = null;
+  let currentScores = {}; // { studentId: { topic: value } }
+ 
+  const bands = [
+    { label: 'Excellent', min: 70, concern: false },
+    { label: 'Very Good', min: 60, concern: false },
+    { label: 'Good', min: 50, concern: false },
+    { label: 'Fair', min: 40, concern: true },
+    { label: 'Needs Attention', min: 0, concern: true }
+  ];
+ 
+  function getBand(score) {
+    const sorted = bands.slice().sort((a, b) => b.min - a.min);
+    for (const b of sorted) if (score >= b.min) return b;
+    return sorted[sorted.length - 1];
+  }
+ 
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+ 
+  async function init() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    const { data: teacherData, error: teacherError } = await supabaseClient
+      .from('teachers').select('*').eq('user_id', user.id).maybeSingle();
+ 
+    document.getElementById('loading').style.display = 'none';
+ 
+    if (teacherError || !teacherData) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    currentTeacher = teacherData;
+    document.getElementById('classLabel').textContent = (teacherData.class_name || 'Your class') + ' at your school';
+    document.getElementById('content').style.display = 'block';
+ 
+    await loadStudents();
+    await loadAssessments();
+  }
+ 
+  async function loadStudents() {
+    const { data } = await supabaseClient
+      .from('students').select('*')
+      .eq('school_id', currentTeacher.school_id)
+      .eq('class_name', currentTeacher.class_name);
+    students = data || [];
+  }
+ 
+  async function loadAssessments() {
+    const { data } = await supabaseClient
+      .from('assessments').select('*')
+      .eq('school_id', currentTeacher.school_id)
+      .eq('class_name', currentTeacher.class_name);
+    assessments = data || [];
+ 
+    const select = document.getElementById('assessmentSelect');
+    select.innerHTML = '<option value="">— Select an assessment —</option>' +
+      assessments.map(a => '<option value="' + a.id + '">' + escapeHtml(a.name) + '</option>').join('');
+ 
+    if (assessments.length) {
+      select.value = assessments[assessments.length - 1].id;
+      onSelectAssessment();
+    }
+  }
+ 
+  async function createAssessment() {
+    const name = document.getElementById('newAssessmentName').value.trim();
+    const topicsRaw = document.getElementById('newAssessmentTopics').value.trim();
+    const msg = document.getElementById('createMsg');
+ 
+    if (!name || !topicsRaw) {
+      msg.className = 'error';
+      msg.textContent = 'Please enter both a name and at least one topic.';
+      return;
+    }
+ 
+    const { error } = await supabaseClient
+      .from('assessments')
+      .insert([{ school_id: currentTeacher.school_id, class_name: currentTeacher.class_name, name, topics: topicsRaw }]);
+ 
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Error: ' + error.message;
+      return;
+    }
+ 
+    msg.className = 'success';
+    msg.textContent = 'Assessment created.';
+    document.getElementById('newAssessmentName').value = '';
+    document.getElementById('newAssessmentTopics').value = '';
+    await loadAssessments();
+  }
+ 
+  async function onSelectAssessment() {
+    const id = document.getElementById('assessmentSelect').value;
+    if (!id) {
+      document.getElementById('registerCard').style.display = 'none';
+      return;
+    }
+    currentAssessment = assessments.find(a => String(a.id) === String(id));
+    document.getElementById('registerCard').style.display = 'block';
+ 
+    const { data: scoreRows } = await supabaseClient
+      .from('scores').select('*').eq('assessment_id', currentAssessment.id);
+ 
+    currentScores = {};
+    (scoreRows || []).forEach(row => {
+      if (!currentScores[row.student_id]) currentScores[row.student_id] = {};
+      currentScores[row.student_id][row.topic] = row.score;
+    });
+ 
+    renderRegister();
+  }
+ 
+  function topicsForCurrent() {
+    return currentAssessment.topics.split(',').map(t => t.trim()).filter(Boolean);
+  }
+ 
+  function renderRegister() {
+    const topics = topicsForCurrent();
+    const head = document.getElementById('registerHead');
+    head.innerHTML = '<th>Student</th>' + topics.map(t => '<th>' + escapeHtml(t) + '</th>').join('') + '<th></th>';
+ 
+    const rows = document.getElementById('registerRows');
+    const emptyNote = document.getElementById('emptyNote');
+ 
+    if (!students.length) {
+      rows.innerHTML = '';
+      emptyNote.classList.remove('hidden');
+      return;
+    }
+    emptyNote.classList.add('hidden');
+ 
+    rows.innerHTML = students.map(s => {
+      const sScores = currentScores[s.id] || {};
+      const cells = topics.map(t => {
+        const v = sScores[t];
+        const hasVal = v != null && !isNaN(parseFloat(v));
+        const cls = hasVal ? (getBand(parseFloat(v)).concern ? 'attention' : 'strength') : '';
+        return '<td><input class="score-input ' + cls + '" type="number" min="0" max="100" data-student="' + s.id + '" data-topic="' + escapeHtml(t) + '" value="' + (hasVal ? v : '') + '"></td>';
+      }).join('');
+      return '<tr><td><strong>' + escapeHtml(s.name) + '</strong></td>' + cells +
+        '<td><button class="btn-outline" onclick="showInsight(' + s.id + ')">Get insight</button><div id="inl-' + s.id + '"></div></td></tr>';
+    }).join('');
+ 
+    document.querySelectorAll('.score-input').forEach(inp => {
+      inp.addEventListener('input', () => {
+        const sid = inp.getAttribute('data-student');
+        const topic = inp.getAttribute('data-topic');
+        if (!currentScores[sid]) currentScores[sid] = {};
+        currentScores[sid][topic] = inp.value === '' ? null : parseFloat(inp.value);
+        const band = inp.value !== '' ? getBand(parseFloat(inp.value)) : null;
+        inp.className = 'score-input' + (band ? (band.concern ? ' attention' : ' strength') : '');
+      });
+    });
+  }
+ 
+  function getInsight(studentId) {
+    const topics = topicsForCurrent();
+    const sScores = currentScores[studentId] || {};
+    const student = students.find(s => s.id === studentId);
+    const name = student ? student.name : 'This student';
+ 
+    const scored = topics.map(t => {
+      const v = parseFloat(sScores[t]);
+      if (isNaN(v)) return null;
+      return { topic: t, score: v, band: getBand(v) };
+    }).filter(Boolean);
+ 
+    if (!scored.length) return { text: 'No scores entered yet for ' + name + '.', tone: 'attention' };
+ 
+    const strong = scored.filter(x => !x.band.concern);
+    const attn = scored.filter(x => x.band.concern);
+ 
+    if (strong.length === scored.length) {
+      return { text: name + ' is performing well across all topics assessed. No topics currently need urgent attention.', tone: 'strength' };
+    }
+    if (attn.length === scored.length) {
+      return { text: name + ' needs support across all topics assessed. Suggested next step: focused revision and extra practice.', tone: 'attention' };
+    }
+    return {
+      text: name + ' is doing well in ' + strong.map(x => x.topic).join(', ') + '. The area(s) needing attention: ' + attn.map(x => x.topic).join(', ') + '.',
+      tone: 'attention'
+    };
+  }
+ 
+  function showInsight(studentId) {
+    const result = getInsight(studentId);
+    document.getElementById('inl-' + studentId).innerHTML =
+      '<div class="insight-card ' + result.tone + '">' + escapeHtml(result.text) + '</div>';
+  }
+ 
+  async function saveScores() {
+    const msg = document.getElementById('msg');
+    const topics = topicsForCurrent();
+ 
+    const rowsToInsert = [];
+    students.forEach(s => {
+      const sScores = currentScores[s.id] || {};
+      topics.forEach(t => {
+        const v = sScores[t];
+        if (v != null && v !== '' && !isNaN(v)) {
+          rowsToInsert.push({
+            school_id: currentTeacher.school_id,
+            assessment_id: currentAssessment.id,
+            student_id: s.id,
+            topic: t,
+            score: v
+          });
+        }
+      });
+    });
+ 
+    const { error: deleteError } = await supabaseClient
+      .from('scores').delete().eq('assessment_id', currentAssessment.id);
+ 
+    if (deleteError) {
+      msg.className = 'error';
+      msg.textContent = 'Error clearing old scores: ' + deleteError.message;
+      return;
+    }
+ 
+    if (rowsToInsert.length) {
+      const { error: insertError } = await supabaseClient.from('scores').insert(rowsToInsert);
+      if (insertError) {
+        msg.className = 'error';
+        msg.textContent = 'Error saving scores: ' + insertError.message;
+        return;
+      }
+    }
+ 
+    msg.className = 'success';
+    msg.textContent = 'Scores saved.';
+  }
+ 
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'login.html';
+  }
+ 
+  init();
+</script>
+ 
+</body>
+</html>
