@@ -11,15 +11,26 @@
   .topbar .brand { font-weight: 700; font-size: 15px; }
   .topbar nav a, .topbar nav button { color: #EAF1F0; text-decoration: none; font-size: 13px; margin-left: 18px; background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px; border-radius: 4px; cursor: pointer; }
   .topbar nav a:hover, .topbar nav button:hover { background: rgba(255,255,255,0.12); }
-  .page { max-width: 640px; margin: 32px auto; padding: 0 20px; }
+  .page { max-width: 720px; margin: 32px auto; padding: 0 20px; }
   .card { background: #FBFAF5; border: 1px solid #D8D2BE; border-radius: 6px; padding: 22px 24px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); margin-bottom: 18px; }
   h1 { font-size: 19px; color: #1F4E5F; margin: 0 0 4px; }
   .subhead { font-size: 12.5px; color: #4A5A6B; margin-bottom: 16px; }
   label { display: block; font-size: 13px; margin: 10px 0 4px; }
   input { width: 100%; padding: 8px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+ 
+  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .toolbar input[type="text"] { flex: 1; min-width: 140px; }
+  .toolbar select { font-size: 13px; padding: 8px; border: 1px solid #C9C2A8; border-radius: 4px; }
+ 
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { text-align: left; padding: 7px 6px; border-bottom: 2px solid #1F4E5F; color: #4A5A6B; font-size: 10.5px; text-transform: uppercase; }
-  td { padding: 8px 6px; border-bottom: 1px solid #E5DFC9; }
+  td { padding: 8px 6px; border-bottom: 1px solid #E5DFC9; vertical-align: top; }
+  .attendance-input { width: 55px; padding: 4px; border: 1px solid #C9C2A8; border-radius: 4px; text-align: center; font-size: 12.5px; }
+  .notes-toggle { font-size: 11.5px; color: #1F4E5F; text-decoration: underline; cursor: pointer; }
+  .notes-box textarea { width: 100%; font-family: inherit; font-size: 12px; padding: 6px; border: 1px solid #C9C2A8; border-radius: 4px; resize: vertical; min-height: 44px; margin-top: 6px; }
+  .save-hint { font-size: 10.5px; color: #4A5A6B; margin-top: 3px; display: none; }
+  .save-hint.show { display: block; }
+ 
   button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 14px; }
   #msg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
   #msg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
@@ -50,7 +61,20 @@
     <div class="card">
       <h1>Students</h1>
       <div class="subhead" id="classLabel"></div>
-      <table><thead><tr><th>Name</th><th>Admission No.</th></tr></thead><tbody id="rows"></tbody></table>
+ 
+      <div class="toolbar">
+        <input type="text" id="searchBox" placeholder="Search by name…" oninput="renderStudents()">
+        <select id="sortSelect" onchange="renderStudents()">
+          <option value="name">Sort: Name (A–Z)</option>
+          <option value="attendance-low">Sort: Lowest attendance first</option>
+          <option value="attendance-high">Sort: Highest attendance first</option>
+        </select>
+      </div>
+ 
+      <table>
+        <thead><tr><th>Name</th><th>Admission No.</th><th>Attendance</th><th>Notes</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
       <div id="emptyNote" class="empty-note hidden">No students added yet.</div>
     </div>
  
@@ -73,6 +97,7 @@
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  
   let currentTeacher = null;
+  let students = [];
  
   function escapeHtml(str) {
     return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -103,7 +128,7 @@
     currentTeacher = teacherData;
     document.getElementById('classLabel').textContent = (teacherData.class_name || 'Your class') + ' · students you can see and add';
     document.getElementById('content').style.display = 'block';
-    loadStudents();
+    await loadStudents();
   }
  
   async function loadStudents() {
@@ -113,27 +138,84 @@
       .eq('school_id', currentTeacher.school_id)
       .eq('class_name', currentTeacher.class_name);
  
-    const rows = document.getElementById('rows');
-    rows.innerHTML = '';
-    const emptyNote = document.getElementById('emptyNote');
- 
     if (error) {
-      emptyNote.classList.remove('hidden');
-      emptyNote.textContent = 'Error loading students: ' + error.message;
+      document.getElementById('emptyNote').classList.remove('hidden');
+      document.getElementById('emptyNote').textContent = 'Error loading students: ' + error.message;
       return;
     }
-    if (!data || !data.length) {
+    students = data || [];
+    renderStudents();
+  }
+ 
+  function renderStudents() {
+    const search = (document.getElementById('searchBox').value || '').toLowerCase();
+    const sortMode = document.getElementById('sortSelect').value;
+ 
+    let list = students.filter(s => s.name.toLowerCase().indexOf(search) !== -1);
+ 
+    if (sortMode === 'name') {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sortMode === 'attendance-low') {
+      list.sort((a, b) => (a.attendance == null ? 999 : a.attendance) - (b.attendance == null ? 999 : b.attendance));
+    } else if (sortMode === 'attendance-high') {
+      list.sort((a, b) => (b.attendance == null ? -1 : b.attendance) - (a.attendance == null ? -1 : a.attendance));
+    }
+ 
+    const rows = document.getElementById('rows');
+    const emptyNote = document.getElementById('emptyNote');
+ 
+    if (!list.length) {
+      rows.innerHTML = '';
       emptyNote.classList.remove('hidden');
-      emptyNote.textContent = 'No students added yet.';
+      emptyNote.textContent = students.length ? 'No students match your search.' : 'No students added yet.';
       return;
     }
     emptyNote.classList.add('hidden');
  
-    data.forEach(s => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + escapeHtml(s.name) + '</td><td>' + escapeHtml(s.admission_number || '—') + '</td>';
-      rows.appendChild(tr);
-    });
+    rows.innerHTML = list.map(s => {
+      return '<tr>' +
+        '<td><strong>' + escapeHtml(s.name) + '</strong></td>' +
+        '<td>' + escapeHtml(s.admission_number || '—') + '</td>' +
+        '<td><input class="attendance-input" type="number" min="0" max="100" value="' + (s.attendance != null ? s.attendance : '') + '" data-id="' + s.id + '" onchange="updateAttendance(this)">%' +
+          '<div class="save-hint" id="att-hint-' + s.id + '">Saved</div></td>' +
+        '<td><span class="notes-toggle" onclick="toggleNotes(' + s.id + ')">' + (s.notes ? 'View/edit note' : '+ Add note') + '</span>' +
+          '<div class="notes-box hidden" id="notes-box-' + s.id + '"><textarea data-id="' + s.id + '" onblur="updateNotes(this)">' + escapeHtml(s.notes) + '</textarea>' +
+          '<div class="save-hint" id="notes-hint-' + s.id + '">Saved</div></div></td>' +
+        '</tr>';
+    }).join('');
+  }
+ 
+  function toggleNotes(id) {
+    document.getElementById('notes-box-' + id).classList.toggle('hidden');
+  }
+ 
+  function flashSaved(hintId) {
+    const el = document.getElementById(hintId);
+    if (!el) return;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 1200);
+  }
+ 
+  async function updateAttendance(input) {
+    const id = input.getAttribute('data-id');
+    const val = input.value === '' ? null : parseFloat(input.value);
+    const { error } = await supabaseClient.from('students').update({ attendance: val }).eq('id', id);
+    if (!error) {
+      const s = students.find(s => String(s.id) === String(id));
+      if (s) s.attendance = val;
+      flashSaved('att-hint-' + id);
+    }
+  }
+ 
+  async function updateNotes(textarea) {
+    const id = textarea.getAttribute('data-id');
+    const val = textarea.value;
+    const { error } = await supabaseClient.from('students').update({ notes: val }).eq('id', id);
+    if (!error) {
+      const s = students.find(s => String(s.id) === String(id));
+      if (s) s.notes = val;
+      flashSaved('notes-hint-' + id);
+    }
   }
  
   async function addStudent() {
@@ -161,7 +243,7 @@
     msg.textContent = 'Student added.';
     document.getElementById('s_name').value = '';
     document.getElementById('s_admission').value = '';
-    loadStudents();
+    await loadStudents();
   }
  
   async function logout() {
@@ -174,4 +256,3 @@
  
 </body>
 </html>
- 
