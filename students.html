@@ -4,101 +4,115 @@
 <meta charset="UTF-8">
 <title>PHOS AI Education — Students</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --ink: #16283A; --ink-soft: #5B6B7A; --teal: #17414F; --teal-tint: #E7EFEE;
+    --gold: #B0822B; --sage: #4C7A63; --sage-tint: #E7F0EA;
+    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EEF1EC; margin: 0; color: #1B2A3F; }
-  .topbar { background: #1F4E5F; color: #FBFAF5; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
-  .topbar .brand { font-weight: 700; font-size: 15px; }
-  .topbar nav a, .topbar nav button { color: #EAF1F0; text-decoration: none; font-size: 13px; margin-left: 18px; background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-  .topbar nav a:hover, .topbar nav button:hover { background: rgba(255,255,255,0.12); }
-  .page { max-width: 720px; margin: 32px auto; padding: 0 20px; }
-  .card { background: #FBFAF5; border: 1px solid #D8D2BE; border-radius: 6px; padding: 22px 24px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); margin-bottom: 18px; }
-  h1 { font-size: 19px; color: #1F4E5F; margin: 0 0 4px; }
-  .subhead { font-size: 12.5px; color: #4A5A6B; margin-bottom: 16px; }
-  label { display: block; font-size: 13px; margin: 10px 0 4px; }
-  input { width: 100%; padding: 8px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+  body { font-family: "IBM Plex Sans", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 13.5px; line-height: 1.5; }
+  .app { display: flex; min-height: 100vh; }
  
-  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .sidebar { width: 210px; background: linear-gradient(180deg, #17414F 0%, #123641 100%); color: #DCEAE6; flex-shrink: 0; padding: 18px 0; }
+  .brand { font-family: "Fraunces", serif; font-weight: 600; font-size: 14px; color: #FBFAF5; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 8px; }
+  .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #B9D3CB; text-decoration: none; border-left: 3px solid transparent; }
+  .nav-item:hover { background: rgba(255,255,255,0.05); }
+  .nav-item.active { background: rgba(255,255,255,0.08); border-left-color: var(--gold); color: #FBFAF5; font-weight: 600; }
+  .logout-item { display: block; padding: 10px 20px; font-size: 12.5px; color: #E3A9A9; cursor: pointer; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+ 
+  .main { flex: 1; padding: 36px 40px; max-width: 760px; }
+  .card { background: var(--paper); border-radius: 8px; padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
+  h1 { font-family: "Fraunces", serif; font-weight: 600; font-size: 20px; color: var(--ink); margin: 0 0 3px; }
+  .subhead { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 18px; }
+ 
+  label { display: block; font-size: 13px; margin: 10px 0 4px; color: var(--ink); }
+  input { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; background: #FFFEFB; }
+ 
+  .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .toolbar input[type="text"] { flex: 1; min-width: 140px; }
-  .toolbar select { font-size: 13px; padding: 8px; border: 1px solid #C9C2A8; border-radius: 4px; }
+  .toolbar select { font-size: 13px; padding: 9px; border: 1px solid var(--border); border-radius: 5px; background: #FFFEFB; }
  
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 7px 6px; border-bottom: 2px solid #1F4E5F; color: #4A5A6B; font-size: 10.5px; text-transform: uppercase; }
-  td { padding: 8px 6px; border-bottom: 1px solid #E5DFC9; vertical-align: top; }
-  .attendance-input { width: 55px; padding: 4px; border: 1px solid #C9C2A8; border-radius: 4px; text-align: center; font-size: 12.5px; }
-  .notes-toggle { font-size: 11.5px; color: #1F4E5F; text-decoration: underline; cursor: pointer; }
-  .notes-box textarea { width: 100%; font-family: inherit; font-size: 12px; padding: 6px; border: 1px solid #C9C2A8; border-radius: 4px; resize: vertical; min-height: 44px; margin-top: 6px; }
-  .save-hint { font-size: 10.5px; color: #4A5A6B; margin-top: 3px; display: none; }
+  th { text-align: left; padding: 8px 6px; border-bottom: 2px solid var(--teal); color: var(--ink-soft); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td { padding: 9px 6px; border-bottom: 1px solid #EFE9D6; vertical-align: top; }
+  .student-name { font-family: "Fraunces", serif; font-weight: 600; font-size: 13.5px; }
+  .attendance-input { width: 55px; padding: 5px; border: 1px solid var(--border); border-radius: 4px; text-align: center; font-size: 12.5px; }
+  .notes-toggle { font-size: 11.5px; color: var(--teal); text-decoration: underline; cursor: pointer; }
+  .notes-box textarea { width: 100%; font-family: inherit; font-size: 12px; padding: 7px; border: 1px solid var(--border); border-radius: 4px; resize: vertical; min-height: 44px; margin-top: 6px; }
+  .save-hint { font-size: 10.5px; color: var(--sage); margin-top: 3px; display: none; }
   .save-hint.show { display: block; }
  
-  button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 14px; }
-  button.btn-outline { background: none; border: 1px solid #1F4E5F; color: #1F4E5F; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; }
-  #csvMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
-  #csvMsg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
-  #csvMsg.error { background: #F3E4E3; color: #A3273A; display: block; }
-  #msg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
-  #msg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
-  #msg.error { background: #F3E4E3; color: #A3273A; display: block; }
-  #loading, #notLoggedIn { text-align: center; color: #4A5A6B; padding: 60px 0; }
-  .empty-note { font-size: 13px; color: #4A5A6B; font-style: italic; padding: 8px 0; }
+  button.btn-primary { background: var(--teal); color: var(--paper); border: none; padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; margin-top: 14px; font-weight: 500; }
+  button.btn-outline { background: none; border: 1px solid var(--teal); color: var(--teal); padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
+ 
+  #msg, #csvMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  #msg.success, #csvMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
+  #msg.error, #csvMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
+  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
+  .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; padding: 8px 0; }
   .hidden { display: none; }
 </style>
 </head>
 <body>
  
-<div class="topbar">
-  <div class="brand">PHOS AI Education</div>
-  <nav>
-    <a href="teacher-dashboard.html">Dashboard</a>
-    <a href="assessments.html">Assessments</a>
-    <button onclick="logout()">Log Out</button>
-  </nav>
-</div>
- 
-<div class="page">
-  <div id="loading">Loading…</div>
-  <div id="notLoggedIn" style="display:none;" class="card">
-    You're not logged in, or this account isn't linked to a teacher. <a href="login.html">Go to login</a>
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">PHOS AI Education</div>
+    <a class="nav-item" href="teacher-dashboard.html">Dashboard</a>
+    <a class="nav-item active" href="students.html">Students</a>
+    <a class="nav-item" href="assessments.html">Assessments</a>
+    <div class="logout-item" onclick="logout()">Log Out</div>
   </div>
  
-  <div id="content" style="display:none;">
-    <div class="card">
-      <h1>Students</h1>
-      <div class="subhead" id="classLabel"></div>
+  <div class="main">
+    <div id="loading">Loading…</div>
+    <div id="notLoggedIn" style="display:none;" class="card">
+      You're not logged in, or this account isn't linked to a teacher. <a href="login.html">Go to login</a>
+    </div>
  
-      <div class="toolbar">
-        <input type="text" id="searchBox" placeholder="Search by name…" oninput="renderStudents()">
-        <select id="sortSelect" onchange="renderStudents()">
-          <option value="name">Sort: Name (A–Z)</option>
-          <option value="attendance-low">Sort: Lowest attendance first</option>
-          <option value="attendance-high">Sort: Highest attendance first</option>
-        </select>
+    <div id="content" style="display:none;">
+      <div class="card">
+        <h1>Students</h1>
+        <div class="subhead" id="classLabel"></div>
+ 
+        <div class="toolbar">
+          <input type="text" id="searchBox" placeholder="Search by name…" oninput="renderStudents()">
+          <select id="sortSelect" onchange="renderStudents()">
+            <option value="name">Sort: Name (A–Z)</option>
+            <option value="attendance-low">Sort: Lowest attendance first</option>
+            <option value="attendance-high">Sort: Highest attendance first</option>
+          </select>
+        </div>
+ 
+        <table>
+          <thead><tr><th>Name</th><th>Admission No.</th><th>Attendance</th><th>Notes</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div id="emptyNote" class="empty-note hidden">No students added yet.</div>
+        <div style="margin-top:14px;"><button class="btn-outline" onclick="exportStudentsCSV()">Export Class List (CSV)</button></div>
       </div>
  
-      <table>
-        <thead><tr><th>Name</th><th>Admission No.</th><th>Attendance</th><th>Notes</th></tr></thead>
-        <tbody id="rows"></tbody>
-      </table>
-      <div id="emptyNote" class="empty-note hidden">No students added yet.</div>
-      <div style="margin-top:14px;"><button class="btn-outline" onclick="exportStudentsCSV()">Export Class List (CSV)</button></div>
-    </div>
+      <div class="card">
+        <h1>Import Students (CSV)</h1>
+        <div class="subhead">First column "Name", second column "Admission Number" (optional) — one student per row</div>
+        <input type="file" id="csvFile" accept=".csv">
+        <div style="margin-top:12px;"><button class="btn-primary" onclick="importStudentsCSV()">Import CSV</button></div>
+        <div id="csvMsg"></div>
+      </div>
  
-    <div class="card">
-      <h1>Import Students (CSV)</h1>
-      <div class="subhead">First column "Name", second column "Admission Number" (optional) — one student per row</div>
-      <input type="file" id="csvFile" accept=".csv">
-      <div style="margin-top:12px;"><button class="btn-primary" onclick="importStudentsCSV()">Import CSV</button></div>
-      <div id="csvMsg"></div>
-    </div>
- 
-    <div class="card">
-      <h1>Add a Student</h1>
-      <label>Student's name</label>
-      <input id="s_name" placeholder="e.g. Daniel Okafor">
-      <label>Admission number (optional)</label>
-      <input id="s_admission" placeholder="e.g. GS/2026/014">
-      <button class="btn-primary" onclick="addStudent()">Add Student</button>
-      <div id="msg"></div>
+      <div class="card">
+        <h1>Add a Student</h1>
+        <label>Student's name</label>
+        <input id="s_name" placeholder="e.g. Daniel Okafor">
+        <label>Admission number (optional)</label>
+        <input id="s_admission" placeholder="e.g. GS/2026/014">
+        <button class="btn-primary" onclick="addStudent()">Add Student</button>
+        <div id="msg"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -187,7 +201,7 @@
  
     rows.innerHTML = list.map(s => {
       return '<tr>' +
-        '<td><strong>' + escapeHtml(s.name) + '</strong></td>' +
+        '<td class="student-name">' + escapeHtml(s.name) + '</td>' +
         '<td>' + escapeHtml(s.admission_number || '—') + '</td>' +
         '<td><input class="attendance-input" type="number" min="0" max="100" value="' + (s.attendance != null ? s.attendance : '') + '" data-id="' + s.id + '" onchange="updateAttendance(this)">%' +
           '<div class="save-hint" id="att-hint-' + s.id + '">Saved</div></td>' +
@@ -255,7 +269,6 @@
   function parseStudentsCSV(text) {
     const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
     if (!lines.length) throw new Error('The file appears to be empty.');
-    // Skip a header row if the first cell looks like "Name" rather than an actual name
     const firstCells = lines[0].split(',').map(c => c.trim());
     const startIndex = firstCells[0].toLowerCase() === 'name' ? 1 : 0;
  
@@ -348,4 +361,3 @@
  
 </body>
 </html>
- 
