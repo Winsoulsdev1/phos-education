@@ -17,6 +17,10 @@
   .field-grid { display: grid; grid-template-columns: 120px 1fr; row-gap: 10px; font-size: 14px; }
   .field-grid strong { color: #4A5A6B; font-weight: 600; }
   .subject-tag { display: inline-block; background: #E1EBEA; color: #1F4E5F; font-size: 12px; padding: 2px 9px; border-radius: 10px; margin: 2px 4px 2px 0; }
+  .photo-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .photo-circle { width: 60px; height: 60px; border-radius: 50%; background: #B0822B; color: #FBFAF5; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+  .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-msg { font-size: 11.5px; color: #4A5A6B; margin-top: 4px; }
   #loading, #notLoggedIn { text-align: center; color: #4A5A6B; padding: 60px 0; }
 </style>
 </head>
@@ -37,6 +41,13 @@
     You're not logged in. <a href="login.html">Go to login</a>
   </div>
   <div id="content" style="display:none;" class="card">
+    <div class="photo-row">
+      <div class="photo-circle" id="photoCircle">?</div>
+      <div>
+        <input type="file" id="photoFile" accept="image/*" onchange="uploadPhoto()">
+        <div id="photoMsg" class="photo-msg"></div>
+      </div>
+    </div>
     <h1 id="teacherName"></h1>
     <div class="field-grid">
       <strong>School</strong><span id="schoolName"></span>
@@ -61,6 +72,8 @@
     return subjectString.split(',').map(s => s.trim()).filter(Boolean)
       .map(s => '<span class="subject-tag">' + escapeHtml(s) + '</span>').join('');
   }
+ 
+  let currentTeacher = null;
  
   async function loadTeacher() {
     const { data: { user } } = await supabaseClient.auth.getUser();
@@ -90,6 +103,8 @@
       return;
     }
  
+    currentTeacher = data;
+ 
     let schoolLabel = '—';
     const { data: schoolData } = await supabaseClient
       .from('schools')
@@ -103,7 +118,53 @@
     document.getElementById('className').textContent = data.class_name || '—';
     document.getElementById('email').textContent = data.email || '—';
     document.getElementById('subjects').innerHTML = subjectTags(data.subject);
+ 
+    const photoCircle = document.getElementById('photoCircle');
+    if (data.photo_url) {
+      photoCircle.innerHTML = '<img src="' + data.photo_url + '" alt="Profile photo">';
+    } else {
+      const initials = (data.name || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+      photoCircle.textContent = initials || '?';
+    }
+ 
     document.getElementById('content').style.display = 'block';
+  }
+ 
+  async function uploadPhoto() {
+    const fileInput = document.getElementById('photoFile');
+    const msg = document.getElementById('photoMsg');
+    if (!fileInput.files.length || !currentTeacher) return;
+ 
+    const file = fileInput.files[0];
+    const filePath = currentTeacher.user_id + '-' + Date.now() + '.' + file.name.split('.').pop();
+ 
+    msg.textContent = 'Uploading…';
+ 
+    const { error: uploadError } = await supabaseClient.storage
+      .from('teacher-photos')
+      .upload(filePath, file, { upsert: true });
+ 
+    if (uploadError) {
+      msg.textContent = 'Upload error: ' + uploadError.message;
+      return;
+    }
+ 
+    const { data: urlData } = supabaseClient.storage.from('teacher-photos').getPublicUrl(filePath);
+    const publicUrl = urlData.publicUrl;
+ 
+    const { error: updateError } = await supabaseClient
+      .from('teachers')
+      .update({ photo_url: publicUrl })
+      .eq('user_id', currentTeacher.user_id);
+ 
+    if (updateError) {
+      msg.textContent = 'Saved photo, but error linking it: ' + updateError.message;
+      return;
+    }
+ 
+    currentTeacher.photo_url = publicUrl;
+    document.getElementById('photoCircle').innerHTML = '<img src="' + publicUrl + '" alt="Profile photo">';
+    msg.textContent = 'Photo updated.';
   }
  
   async function logout() {
