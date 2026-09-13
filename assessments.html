@@ -6,7 +6,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --ink: #16283A; --ink-soft: #5B6B7A; --teal: #17414F; --teal-tint: #E7EFEE;
@@ -14,11 +14,11 @@
     --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
   }
   * { box-sizing: border-box; }
-  body { font-family: "IBM Plex Sans", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 13.5px; line-height: 1.5; }
+  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 13.5px; line-height: 1.5; }
   .app { display: flex; min-height: 100vh; }
  
   .sidebar { width: 210px; background: linear-gradient(180deg, #17414F 0%, #123641 100%); color: #DCEAE6; flex-shrink: 0; padding: 18px 0; }
-  .brand { font-family: "Fraunces", serif; font-weight: 600; font-size: 14px; color: #FBFAF5; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 8px; }
+  .brand { font-weight: 700; font-size: 14px; color: #FBFAF5; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 8px; }
   .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #B9D3CB; text-decoration: none; border-left: 3px solid transparent; }
   .nav-item:hover { background: rgba(255,255,255,0.05); }
   .nav-item.active { background: rgba(255,255,255,0.08); border-left-color: var(--gold); color: #FBFAF5; font-weight: 600; }
@@ -26,9 +26,9 @@
  
   .main { flex: 1; padding: 36px 40px; max-width: 840px; }
   .card { background: var(--paper); border-radius: 8px; padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
-  h1 { font-family: "Fraunces", serif; font-weight: 600; font-size: 20px; color: var(--ink); margin: 0 0 3px; }
+  h1 { font-weight: 700; font-size: 20px; color: var(--ink); margin: 0 0 3px; }
   .subhead { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
-  .section-title { font-family: "Fraunces", serif; font-weight: 600; font-size: 14px; color: var(--teal); margin: 0 0 12px; }
+  .section-title { font-weight: 700; font-size: 14px; color: var(--teal); margin: 0 0 12px; }
  
   label { display: block; font-size: 13px; margin: 10px 0 4px; }
   input, select { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; background: #FFFEFB; }
@@ -38,9 +38,9 @@
   td { padding: 9px 6px; border-bottom: 1px solid #EFE9D6; vertical-align: top; }
   .register-table th, .register-table td { text-align: center; }
   .register-table th:first-child, .register-table td:first-child { text-align: left; }
-  .student-name { font-family: "Fraunces", serif; font-weight: 600; font-size: 13.5px; }
+  .student-name { font-weight: 700; font-size: 13.5px; }
  
-  .score-input { font-family: "Fraunces", serif; font-weight: 600; width: 56px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; text-align: center; }
+  .score-input { font-weight: 700; width: 56px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; text-align: center; }
   .score-input.attention { color: var(--red); background: #FCF6F6; }
   .score-input.strength { color: var(--sage); background: #F5F9F6; }
  
@@ -48,13 +48,13 @@
   button.btn-outline { background: none; border: 1px solid var(--teal); color: var(--teal); padding: 7px 13px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 500; }
   button.btn-danger { background: none; border: 1px solid var(--red); color: var(--red); padding: 7px 13px; border-radius: 5px; cursor: pointer; font-size: 12px; }
  
-  .insight-card { margin-top: 6px; padding: 8px 10px; font-size: 12px; border-radius: 5px; font-family: "Fraunces", serif; }
+  .insight-card { margin-top: 6px; padding: 8px 10px; font-size: 12px; border-radius: 5px; font-weight: 600; }
   .insight-card.strength { background: var(--sage-tint); color: #2E4F41; }
   .insight-card.attention { background: var(--red-tint); color: #6E1F2A; }
  
   .pattern-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #EFE9D6; font-size: 13px; }
   .pattern-row:last-child { border-bottom: none; }
-  .pattern-count { font-family: "Fraunces", serif; font-weight: 700; color: var(--red); min-width: 22px; }
+  .pattern-count { font-weight: 700; color: var(--red); min-width: 22px; }
   .pattern-count.low { color: var(--ink-soft); font-weight: 400; }
  
   .warning-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EFE9D6; font-size: 13px; }
@@ -484,3 +484,4 @@
  
 </body>
 </html>
+ 
