@@ -32,6 +32,10 @@
   .save-hint.show { display: block; }
  
   button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 14px; }
+  button.btn-outline { background: none; border: 1px solid #1F4E5F; color: #1F4E5F; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  #csvMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
+  #csvMsg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
+  #csvMsg.error { background: #F3E4E3; color: #A3273A; display: block; }
   #msg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
   #msg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
   #msg.error { background: #F3E4E3; color: #A3273A; display: block; }
@@ -76,6 +80,15 @@
         <tbody id="rows"></tbody>
       </table>
       <div id="emptyNote" class="empty-note hidden">No students added yet.</div>
+      <div style="margin-top:14px;"><button class="btn-outline" onclick="exportStudentsCSV()">Export Class List (CSV)</button></div>
+    </div>
+ 
+    <div class="card">
+      <h1>Import Students (CSV)</h1>
+      <div class="subhead">First column "Name", second column "Admission Number" (optional) — one student per row</div>
+      <input type="file" id="csvFile" accept=".csv">
+      <div style="margin-top:12px;"><button class="btn-primary" onclick="importStudentsCSV()">Import CSV</button></div>
+      <div id="csvMsg"></div>
     </div>
  
     <div class="card">
@@ -218,6 +231,85 @@
     }
   }
  
+  function exportStudentsCSV() {
+    const header = ['Name', 'Admission Number', 'Attendance %', 'Notes'];
+    const lines = [header.join(',')];
+    students.forEach(s => {
+      const row = [
+        s.name,
+        s.admission_number || '',
+        s.attendance != null ? s.attendance : '',
+        '"' + (s.notes || '').replace(/"/g, '""') + '"'
+      ];
+      lines.push(row.join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = (currentTeacher.class_name || 'class') + '-students.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+ 
+  function parseStudentsCSV(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+    if (!lines.length) throw new Error('The file appears to be empty.');
+    // Skip a header row if the first cell looks like "Name" rather than an actual name
+    const firstCells = lines[0].split(',').map(c => c.trim());
+    const startIndex = firstCells[0].toLowerCase() === 'name' ? 1 : 0;
+ 
+    const parsed = lines.slice(startIndex).map(line => {
+      const cells = line.split(',').map(c => c.trim());
+      return { name: cells[0], admission_number: cells[1] || null };
+    }).filter(r => r.name);
+ 
+    if (!parsed.length) throw new Error('No student rows found.');
+    return parsed;
+  }
+ 
+  async function importStudentsCSV() {
+    const fileInput = document.getElementById('csvFile');
+    const statusBox = document.getElementById('csvMsg');
+    if (!fileInput.files.length) {
+      statusBox.className = 'error';
+      statusBox.textContent = 'Please choose a CSV file first.';
+      return;
+    }
+ 
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      let parsed;
+      try {
+        parsed = parseStudentsCSV(e.target.result);
+      } catch (err) {
+        statusBox.className = 'error';
+        statusBox.textContent = 'Error: ' + err.message;
+        return;
+      }
+ 
+      const rowsToInsert = parsed.map(p => ({
+        school_id: currentTeacher.school_id,
+        class_name: currentTeacher.class_name,
+        name: p.name,
+        admission_number: p.admission_number
+      }));
+ 
+      const { error } = await supabaseClient.from('students').insert(rowsToInsert);
+ 
+      if (error) {
+        statusBox.className = 'error';
+        statusBox.textContent = 'Error importing: ' + error.message;
+        return;
+      }
+ 
+      statusBox.className = 'success';
+      statusBox.textContent = 'Imported ' + rowsToInsert.length + ' students.';
+      await loadStudents();
+    };
+    reader.readAsText(fileInput.files[0]);
+  }
+ 
   async function addStudent() {
     const name = document.getElementById('s_name').value.trim();
     const admission_number = document.getElementById('s_admission').value.trim();
@@ -256,3 +348,4 @@
  
 </body>
 </html>
+ 
