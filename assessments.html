@@ -108,6 +108,12 @@
  
       <div class="card" id="registerCard" style="display:none;">
         <div class="section-title">Enter Scores</div>
+        <div class="subhead" id="csvHint"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+          <input type="file" id="scoreCsvFile" accept=".csv" style="flex:1;min-width:160px;">
+          <button class="btn-outline" onclick="importScoresCSV()">Import CSV</button>
+        </div>
+        <div id="csvImportMsg"></div>
         <table class="register-table"><thead><tr id="registerHead"></tr></thead><tbody id="registerRows"></tbody></table>
         <div id="emptyNote" class="empty-note hidden">No students found for this class yet — add them on the Students page.</div>
         <div style="margin-top:14px;"><button class="btn-primary" onclick="saveScores()">Save Scores</button></div>
@@ -281,6 +287,7 @@
       currentScores[row.student_id][row.topic] = row.score;
     });
  
+    document.getElementById('csvHint').textContent = 'CSV format: Name, ' + topicsForCurrent().join(', ');
     renderRegister();
     renderPatternsAndWarnings();
   }
@@ -430,6 +437,48 @@
       : '<div class="empty-note">No students currently show a declining trend.</div>';
   }
  
+  function importScoresCSV() {
+    const fileInput = document.getElementById('scoreCsvFile');
+    const statusBox = document.getElementById('csvImportMsg');
+    if (!fileInput.files.length) {
+      statusBox.className = 'error';
+      statusBox.textContent = 'Please choose a CSV file first.';
+      return;
+    }
+    const topics = topicsForCurrent();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const lines = e.target.result.split(/\r?\n/).filter(l => l.trim() !== '');
+      if (lines.length < 2) {
+        statusBox.className = 'error';
+        statusBox.textContent = 'CSV needs a header row (Name, then topics) and at least one student row.';
+        return;
+      }
+      const header = lines[0].split(',').map(h => h.trim());
+      let matched = 0, unmatchedNames = [];
+ 
+      lines.slice(1).forEach(line => {
+        const cells = line.split(',').map(c => c.trim());
+        const name = cells[0];
+        const student = students.find(s => s.name.toLowerCase() === (name || '').toLowerCase());
+        if (!student) { if (name) unmatchedNames.push(name); return; }
+ 
+        matched++;
+        if (!currentScores[student.id]) currentScores[student.id] = {};
+        header.slice(1).forEach((col, i) => {
+          if (topics.includes(col) && cells[i + 1] !== undefined && cells[i + 1] !== '') {
+            currentScores[student.id][col] = parseFloat(cells[i + 1]);
+          }
+        });
+      });
+ 
+      renderRegister();
+      statusBox.className = 'success';
+      statusBox.textContent = 'Matched ' + matched + ' student(s).' + (unmatchedNames.length ? ' Not found: ' + unmatchedNames.join(', ') : '') + ' Review below, then click Save Scores.';
+    };
+    reader.readAsText(fileInput.files[0]);
+  }
+ 
   async function saveScores() {
     const msg = document.getElementById('msg');
     const topics = topicsForCurrent();
@@ -484,4 +533,3 @@
  
 </body>
 </html>
- 
