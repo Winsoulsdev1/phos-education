@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — Settings</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16283A; --ink-soft: #5B6B7A; --sidebar-color: #17414F; --teal-tint: #E7EFEE;
+    --gold: #B0822B; --sage: #4C7A63; --sage-tint: #E7F0EA;
+    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 14px; line-height: 1.5; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 210px; background: var(--sidebar-color); color: #DCEAE6; flex-shrink: 0; padding: 18px 0; }
+  .brand { font-weight: 700; font-size: 14px; color: #FBFAF5; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 8px; letter-spacing: 0.2px; }
+  .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #B9D3CB; text-decoration: none; border-left: 3px solid transparent; }
+  .nav-item:hover { background: rgba(255,255,255,0.05); }
+  .nav-item.active { background: rgba(255,255,255,0.08); border-left-color: var(--gold); color: #FBFAF5; font-weight: 600; }
+  .logout-item { display: block; padding: 10px 20px; font-size: 12.5px; color: #E3A9A9; cursor: pointer; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+ 
+  .main { flex: 1; padding: 36px 40px; max-width: 640px; }
+  .card { background: var(--paper); border-radius: 8px; padding: 26px 28px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
+  h1 { font-weight: 700; font-size: 20px; margin: 0 0 4px; }
+  .subhead { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 20px; }
+ 
+  .swatch-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .swatch { width: 44px; height: 44px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: transform 0.1s ease; }
+  .swatch:hover { transform: scale(1.08); }
+  .swatch.selected { border-color: var(--ink); }
+ 
+  #themeMsg { margin-top: 14px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  #themeMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
+  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
+</style>
+</head>
+<body>
+ 
+<div class="app">
+  <div class="sidebar" id="sidebarEl">
+    <div class="brand">PHOS AI Education</div>
+    <a class="nav-item" href="teacher-dashboard.html">Dashboard</a>
+    <a class="nav-item" href="students.html">Students</a>
+    <a class="nav-item" href="assessments.html">Assessments</a>
+    <a class="nav-item active" href="settings.html">Settings</a>
+    <div class="logout-item" onclick="logout()">Log Out</div>
+  </div>
+ 
+  <div class="main">
+    <div id="loading">Loading…</div>
+    <div id="notLoggedIn" style="display:none;" class="card">
+      You're not logged in. <a href="login.html">Go to login</a>
+    </div>
+ 
+    <div id="content" style="display:none;" class="card">
+      <h1>Sidebar Color</h1>
+      <div class="subhead">Pick an accent color for your sidebar — applies across your whole account</div>
+      <div class="swatch-row" id="swatchRow"></div>
+      <div id="themeMsg"></div>
+    </div>
+  </div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  const colorOptions = ['#17414F', '#9C2C3C', '#4C7A63', '#5B4E8C', '#B0822B', '#2B2B2B'];
+  let currentTeacher = null;
+ 
+  async function init() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+    const { data, error } = await supabaseClient.from('teachers').select('*').eq('user_id', user.id).maybeSingle();
+    document.getElementById('loading').style.display = 'none';
+    if (error || !data) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+    currentTeacher = data;
+    applyTheme(data.theme_color);
+    renderSwatches(data.theme_color);
+    document.getElementById('content').style.display = 'block';
+  }
+ 
+  function applyTheme(color) {
+    if (color) document.getElementById('sidebarEl').style.background = color;
+  }
+ 
+  function renderSwatches(selected) {
+    const row = document.getElementById('swatchRow');
+    row.innerHTML = colorOptions.map(c =>
+      '<div class="swatch ' + (c === selected ? 'selected' : '') + '" style="background:' + c + '" onclick="chooseColor(\'' + c + '\')"></div>'
+    ).join('');
+  }
+ 
+  async function chooseColor(color) {
+    applyTheme(color);
+    renderSwatches(color);
+    const { error } = await supabaseClient.from('teachers').update({ theme_color: color }).eq('user_id', currentTeacher.user_id);
+    const msg = document.getElementById('themeMsg');
+    if (!error) {
+      currentTeacher.theme_color = color;
+      msg.className = 'success';
+      msg.textContent = 'Saved — this color will now show across all your pages.';
+    }
+  }
+ 
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'login.html';
+  }
+ 
+  init();
+</script>
+ 
+</body>
+</html>
+ 

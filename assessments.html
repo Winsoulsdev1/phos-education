@@ -11,13 +11,13 @@
   :root {
     --ink: #16283A; --ink-soft: #5B6B7A; --teal: #17414F; --teal-tint: #E7EFEE;
     --gold: #B0822B; --sage: #4C7A63; --sage-tint: #E7F0EA;
-    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
+    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6; --sidebar-color: #17414F;
   }
   * { box-sizing: border-box; }
   body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 13.5px; line-height: 1.5; }
   .app { display: flex; min-height: 100vh; }
  
-  .sidebar { width: 210px; background: linear-gradient(180deg, #17414F 0%, #123641 100%); color: #DCEAE6; flex-shrink: 0; padding: 18px 0; }
+  .sidebar { width: 210px; background: var(--sidebar-color); color: #DCEAE6; flex-shrink: 0; padding: 18px 0; }
   .brand { font-weight: 700; font-size: 14px; color: #FBFAF5; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 8px; }
   .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #B9D3CB; text-decoration: none; border-left: 3px solid transparent; }
   .nav-item:hover { background: rgba(255,255,255,0.05); }
@@ -72,11 +72,12 @@
 <body>
  
 <div class="app">
-  <div class="sidebar">
+  <div class="sidebar" id="sidebarEl">
     <div class="brand">PHOS AI Education</div>
     <a class="nav-item" href="teacher-dashboard.html">Dashboard</a>
     <a class="nav-item" href="students.html">Students</a>
     <a class="nav-item active" href="assessments.html">Assessments</a>
+    <a class="nav-item" href="settings.html">Settings</a>
     <div class="logout-item" onclick="logout()">Log Out</div>
   </div>
  
@@ -186,6 +187,7 @@
  
     currentTeacher = teacherData;
     document.getElementById('classLabel').textContent = (teacherData.class_name || 'Your class') + ' at your school';
+    if (teacherData.theme_color) document.getElementById('sidebarEl').style.background = teacherData.theme_color;
     document.getElementById('content').style.display = 'block';
  
     await loadStudents();
