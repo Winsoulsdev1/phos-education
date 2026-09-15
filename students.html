@@ -48,6 +48,8 @@
  
   button.btn-primary { background: var(--teal); color: var(--paper); border: none; padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; margin-top: 14px; font-weight: 500; }
   button.btn-outline { background: none; border: 1px solid var(--teal); color: var(--teal); padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  td button.btn-outline, td button.btn-primary { padding: 5px 9px; font-size: 11.5px; }
+  td input[type="text"] { padding: 5px; font-size: 12.5px; }
  
   #msg, #csvMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
   #msg.success, #csvMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
@@ -90,7 +92,7 @@
         </div>
  
         <table>
-          <thead><tr><th>Name</th><th>Admission No.</th><th>Attendance</th><th>Notes</th></tr></thead>
+          <thead><tr><th>Name</th><th>Admission No.</th><th>Attendance</th><th>Notes</th><th>Actions</th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
         <div id="emptyNote" class="empty-note hidden">No students added yet.</div>
@@ -202,16 +204,62 @@
     emptyNote.classList.add('hidden');
  
     rows.innerHTML = list.map(s => {
-      return '<tr>' +
-        '<td class="student-name">' + escapeHtml(s.name) + '</td>' +
-        '<td>' + escapeHtml(s.admission_number || '—') + '</td>' +
+      return '<tr id="row-' + s.id + '">' +
+        '<td class="student-name">' +
+          '<div id="view-name-' + s.id + '"><a href="student-profile.html?id=' + s.id + '">' + escapeHtml(s.name) + '</a></div>' +
+          '<div id="edit-name-' + s.id + '" class="hidden"><input type="text" id="edit-name-input-' + s.id + '" value="' + escapeHtml(s.name) + '"></div>' +
+        '</td>' +
+        '<td>' +
+          '<div id="view-adm-' + s.id + '">' + escapeHtml(s.admission_number || '—') + '</div>' +
+          '<div id="edit-adm-' + s.id + '" class="hidden"><input type="text" id="edit-adm-input-' + s.id + '" value="' + escapeHtml(s.admission_number || '') + '"></div>' +
+        '</td>' +
         '<td><input class="attendance-input" type="number" min="0" max="100" value="' + (s.attendance != null ? s.attendance : '') + '" data-id="' + s.id + '" onchange="updateAttendance(this)">%' +
           '<div class="save-hint" id="att-hint-' + s.id + '">Saved</div></td>' +
         '<td><span class="notes-toggle" onclick="toggleNotes(' + s.id + ')">' + (s.notes ? 'View/edit note' : '+ Add note') + '</span>' +
           '<div class="notes-box hidden" id="notes-box-' + s.id + '"><textarea data-id="' + s.id + '" onblur="updateNotes(this)">' + escapeHtml(s.notes) + '</textarea>' +
           '<div class="save-hint" id="notes-hint-' + s.id + '">Saved</div></div></td>' +
+        '<td>' +
+          '<div id="view-actions-' + s.id + '"><button class="btn-outline" onclick="startEditStudent(' + s.id + ')">Edit</button> <button class="btn-outline" style="color:var(--red);border-color:var(--red)" onclick="deleteStudent(' + s.id + ')">Delete</button></div>' +
+          '<div id="edit-actions-' + s.id + '" class="hidden"><button class="btn-primary" style="margin:0;padding:6px 10px;" onclick="saveEditStudent(' + s.id + ')">Save</button> <button class="btn-outline" onclick="cancelEditStudent(' + s.id + ')">Cancel</button></div>' +
+        '</td>' +
         '</tr>';
     }).join('');
+  }
+ 
+  function startEditStudent(id) {
+    document.getElementById('view-name-' + id).classList.add('hidden');
+    document.getElementById('edit-name-' + id).classList.remove('hidden');
+    document.getElementById('view-adm-' + id).classList.add('hidden');
+    document.getElementById('edit-adm-' + id).classList.remove('hidden');
+    document.getElementById('view-actions-' + id).classList.add('hidden');
+    document.getElementById('edit-actions-' + id).classList.remove('hidden');
+  }
+ 
+  function cancelEditStudent(id) { renderStudents(); }
+ 
+  async function saveEditStudent(id) {
+    const name = document.getElementById('edit-name-input-' + id).value.trim();
+    const admission_number = document.getElementById('edit-adm-input-' + id).value.trim();
+    if (!name) { alert('Name cannot be empty.'); return; }
+ 
+    const { error } = await supabaseClient.from('students').update({ name, admission_number }).eq('id', id);
+    if (error) { alert('Error saving: ' + error.message); return; }
+ 
+    const s = students.find(s => s.id === id);
+    if (s) { s.name = name; s.admission_number = admission_number; }
+    renderStudents();
+  }
+ 
+  async function deleteStudent(id) {
+    const s = students.find(s => s.id === id);
+    if (!confirm('Delete ' + (s ? s.name : 'this student') + '? This also removes their saved scores. This cannot be undone.')) return;
+ 
+    await supabaseClient.from('scores').delete().eq('student_id', id);
+    const { error } = await supabaseClient.from('students').delete().eq('id', id);
+    if (error) { alert('Error deleting: ' + error.message); return; }
+ 
+    students = students.filter(s => s.id !== id);
+    renderStudents();
   }
  
   function toggleNotes(id) {
@@ -363,3 +411,8 @@
  
 </body>
 </html>
+ 
+
+
+
+
