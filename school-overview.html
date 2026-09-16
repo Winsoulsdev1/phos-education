@@ -23,14 +23,14 @@
   .nav-item.active { background: rgba(255,255,255,0.08); border-left-color: var(--gold); color: #FBFAF5; font-weight: 600; }
   .logout-item { display: block; padding: 10px 20px; font-size: 12.5px; color: #E3A9A9; cursor: pointer; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
  
-  .main { flex: 1; padding: 36px 40px; max-width: 900px; }
+  .main { flex: 1; padding: 36px 40px; max-width: 950px; }
   .card { background: var(--paper); border-radius: 8px; padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
   h1 { font-weight: 700; font-size: 20px; margin: 0 0 3px; }
   .subhead { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 18px; }
   .section-title { font-weight: 600; font-size: 14px; color: var(--sidebar-color); margin: 0 0 12px; }
  
   .stat-strip { display: flex; gap: 14px; margin-bottom: 20px; }
-  .stat-box { flex: 1; background: var(--paper); border-radius: 8px; padding: 16px 18px; border-left: 4px solid var(--sidebar-color); box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); border-left-width: 4px; }
+  .stat-box { flex: 1; background: var(--paper); border-radius: 8px; padding: 16px 18px; border-left: 4px solid var(--sidebar-color); box-shadow: 0 1px 3px rgba(22,40,58,0.06); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
   .stat-box .num { font-weight: 700; font-size: 26px; line-height: 1; }
   .stat-box .lbl { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
  
@@ -44,17 +44,23 @@
   .tag.attention { background: var(--red-tint); color: var(--red); }
   .tag.neutral { background: var(--teal-tint); color: var(--sidebar-color); }
  
+  .warning-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid #EFE9D6; font-size: 13px; }
+  .warning-row:last-child { border-bottom: none; }
+  .warning-detail { color: var(--ink-soft); font-size: 12px; }
+ 
   #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
   .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; padding: 8px 0; }
+  .hidden { display: none; }
 </style>
 </head>
 <body>
  
 <div class="app">
-  <div class="sidebar">
+  <div class="sidebar" id="sidebarEl">
     <div class="brand">PHOS AI Education</div>
     <a class="nav-item" href="dashboard.html">Dashboard</a>
     <a class="nav-item" href="teachers.html">Teachers</a>
+    <a class="nav-item" href="all-students.html">Students</a>
     <a class="nav-item active" href="school-overview.html">School Overview</a>
     <div class="logout-item" onclick="logout()">Log Out</div>
   </div>
@@ -84,6 +90,23 @@
         </table>
         <div id="emptyNote" class="empty-note hidden">No classes found yet — add teachers and students to see them here.</div>
       </div>
+ 
+      <div class="card">
+        <div class="section-title">Teacher Activity</div>
+        <div class="subhead">A light-touch view to support teachers — not a scorecard</div>
+        <table>
+          <thead><tr><th>Teacher</th><th>Class</th><th>Subjects</th><th>Assessments Created</th><th>Last Activity</th></tr></thead>
+          <tbody id="teacherActivityRows"></tbody>
+        </table>
+        <div id="teacherActivityEmpty" class="empty-note hidden">No teachers added yet.</div>
+      </div>
+ 
+      <div class="card">
+        <div class="section-title">School-Wide Early Warning</div>
+        <div class="subhead">Students whose performance has dropped since their previous assessment, across every class</div>
+        <div id="schoolWarningRows"></div>
+        <div id="schoolWarningEmpty" class="empty-note hidden">No students currently show a declining trend.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -95,6 +118,15 @@
  
   function escapeHtml(str) {
     return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function subjectTags(subjectString) {
+    if (!subjectString) return '—';
+    return subjectString.split(',').map(s => s.trim()).filter(Boolean).join(', ');
+  }
+  function avgFromScores(scoreRows, topicList) {
+    const vals = scoreRows.filter(r => topicList.includes(r.topic)).map(r => r.score).filter(v => v != null);
+    if (!vals.length) return null;
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
   }
  
   let currentSchool = null;
@@ -117,6 +149,7 @@
     }
  
     currentSchool = school;
+    if (school.theme_color) document.getElementById('sidebarEl').style.background = school.theme_color;
     document.getElementById('schoolLabel').textContent = school.name;
     document.getElementById('content').style.display = 'block';
  
@@ -124,17 +157,18 @@
   }
  
   async function loadOverview() {
-    const [{ data: teachers }, { data: students }, { data: assessments }] = await Promise.all([
+    const [{ data: teachers }, { data: students }, { data: assessments }, { data: scores }] = await Promise.all([
       supabaseClient.from('teachers').select('*').eq('school_id', currentSchool.id),
       supabaseClient.from('students').select('*').eq('school_id', currentSchool.id),
-      supabaseClient.from('assessments').select('*').eq('school_id', currentSchool.id)
+      supabaseClient.from('assessments').select('*').eq('school_id', currentSchool.id),
+      supabaseClient.from('scores').select('*').eq('school_id', currentSchool.id)
     ]);
  
     const teacherList = teachers || [];
     const studentList = students || [];
     const assessmentList = assessments || [];
+    const scoreList = scores || [];
  
-    // Distinct class names, from either teachers or students, whichever has them
     const classNames = [...new Set(
       teacherList.map(t => t.class_name).concat(studentList.map(s => s.class_name)).filter(Boolean)
     )];
@@ -143,14 +177,19 @@
     document.getElementById('statTeachers').textContent = teacherList.length;
     document.getElementById('statClasses').textContent = classNames.length;
  
+    renderClassesAtAGlance(classNames, teacherList, studentList, assessmentList, scoreList);
+    renderTeacherActivity(teacherList, assessmentList, scoreList);
+    renderSchoolWideWarnings(classNames, studentList, assessmentList, scoreList);
+  }
+ 
+  function renderClassesAtAGlance(classNames, teacherList, studentList, assessmentList, scoreList) {
     if (!classNames.length) {
       document.getElementById('emptyNote').classList.remove('hidden');
       return;
     }
     document.getElementById('emptyNote').classList.add('hidden');
  
-    const rowsHtml = [];
-    for (const className of classNames) {
+    const rowsHtml = classNames.map(className => {
       const classTeachers = teacherList.filter(t => t.class_name === className).map(t => t.name);
       const classStudents = studentList.filter(s => s.class_name === className);
       const classAssessments = assessmentList.filter(a => a.class_name === className).sort((a, b) => a.id - b.id);
@@ -161,11 +200,11 @@
  
       if (latest) {
         latestName = escapeHtml(latest.name);
-        const { data: scoreRows } = await supabaseClient.from('scores').select('*').eq('assessment_id', latest.id);
-        if (scoreRows && scoreRows.length) {
-          const vals = scoreRows.map(r => r.score).filter(v => v != null);
+        const relevantScores = scoreList.filter(r => r.assessment_id === latest.id);
+        if (relevantScores.length) {
+          const vals = relevantScores.map(r => r.score).filter(v => v != null);
           const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
-          const concernCount = scoreRows.filter(r => r.score < 50).length;
+          const concernCount = relevantScores.filter(r => r.score < 50).length;
           if (avg !== null) {
             perfHtml = '<span class="tag ' + (avg >= 60 ? 'strength' : 'attention') + '">Avg ' + avg + (concernCount ? ' · ' + concernCount + ' low scores' : '') + '</span>';
           }
@@ -174,16 +213,77 @@
         }
       }
  
-      rowsHtml.push(
-        '<tr><td class="class-name">' + escapeHtml(className) + '</td>' +
+      return '<tr><td class="class-name">' + escapeHtml(className) + '</td>' +
         '<td>' + (classTeachers.length ? escapeHtml(classTeachers.join(', ')) : '—') + '</td>' +
         '<td>' + classStudents.length + '</td>' +
         '<td>' + latestName + '</td>' +
-        '<td>' + perfHtml + '</td></tr>'
-      );
-    }
+        '<td>' + perfHtml + '</td></tr>';
+    });
  
     document.getElementById('classRows').innerHTML = rowsHtml.join('');
+  }
+ 
+  function renderTeacherActivity(teacherList, assessmentList, scoreList) {
+    if (!teacherList.length) {
+      document.getElementById('teacherActivityEmpty').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('teacherActivityEmpty').classList.add('hidden');
+ 
+    const rowsHtml = teacherList.map(t => {
+      const classAssessments = assessmentList.filter(a => a.class_name === t.class_name);
+      const assessmentIds = classAssessments.map(a => a.id);
+      const relevantScores = scoreList.filter(r => assessmentIds.includes(r.assessment_id) && r.created_at);
+      let lastActivity = '—';
+      if (relevantScores.length) {
+        const latestTs = relevantScores.reduce((max, r) => r.created_at > max ? r.created_at : max, relevantScores[0].created_at);
+        lastActivity = new Date(latestTs).toLocaleDateString();
+      }
+      return '<tr><td><strong>' + escapeHtml(t.name) + '</strong></td>' +
+        '<td>' + escapeHtml(t.class_name || '—') + '</td>' +
+        '<td>' + escapeHtml(subjectTags(t.subject)) + '</td>' +
+        '<td>' + classAssessments.length + '</td>' +
+        '<td>' + lastActivity + '</td></tr>';
+    });
+ 
+    document.getElementById('teacherActivityRows').innerHTML = rowsHtml.join('');
+  }
+ 
+  function renderSchoolWideWarnings(classNames, studentList, assessmentList, scoreList) {
+    const flagged = [];
+ 
+    classNames.forEach(className => {
+      const classAssessments = assessmentList.filter(a => a.class_name === className).sort((a, b) => a.id - b.id);
+      if (classAssessments.length < 2) return;
+ 
+      const latest = classAssessments[classAssessments.length - 1];
+      const previous = classAssessments[classAssessments.length - 2];
+      const latestTopics = latest.topics.split(',').map(t => t.trim()).filter(Boolean);
+      const prevTopics = previous.topics.split(',').map(t => t.trim()).filter(Boolean);
+ 
+      const classStudents = studentList.filter(s => s.class_name === className);
+      classStudents.forEach(s => {
+        const latestScores = scoreList.filter(r => r.assessment_id === latest.id && r.student_id === s.id);
+        const prevScores = scoreList.filter(r => r.assessment_id === previous.id && r.student_id === s.id);
+        const currAvg = avgFromScores(latestScores, latestTopics);
+        const prevAvg = avgFromScores(prevScores, prevTopics);
+        if (currAvg !== null && prevAvg !== null && currAvg - prevAvg <= -5) {
+          flagged.push({ name: s.name, className, prevAvg, currAvg, diff: currAvg - prevAvg });
+        }
+      });
+    });
+ 
+    if (!flagged.length) {
+      document.getElementById('schoolWarningEmpty').classList.remove('hidden');
+      document.getElementById('schoolWarningRows').innerHTML = '';
+      return;
+    }
+    document.getElementById('schoolWarningEmpty').classList.add('hidden');
+ 
+    document.getElementById('schoolWarningRows').innerHTML = flagged.map(f =>
+      '<div class="warning-row"><span><strong>' + escapeHtml(f.name) + '</strong> — ' + escapeHtml(f.className) + '</span>' +
+      '<span class="warning-detail">' + f.prevAvg + ' → ' + f.currAvg + ' (down ' + Math.abs(f.diff) + ')</span></div>'
+    ).join('');
   }
  
   async function logout() {
@@ -196,3 +296,4 @@
  
 </body>
 </html>
+ 
