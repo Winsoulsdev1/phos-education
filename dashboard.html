@@ -4,88 +4,94 @@
 <meta charset="UTF-8">
 <title>PHOS AI Education — School Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --ink: #16283A; --ink-soft: #5B6B7A; --sidebar-color: #17414F; --teal-tint: #E7EFEE;
+    --gold: #B0822B; --sage: #4C7A63; --sage-tint: #E7F0EA;
+    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EEF1EC; margin: 0; color: #1B2A3F; }
-  .topbar {
-    background: #1F4E5F; color: #FBFAF5; padding: 14px 24px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .topbar .brand { font-weight: 700; font-size: 15px; letter-spacing: 0.3px; }
-  .topbar nav a, .topbar nav button {
-    color: #EAF1F0; text-decoration: none; font-size: 13px; margin-left: 18px;
-    background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px;
-    border-radius: 4px; cursor: pointer;
-  }
-  .topbar nav a:hover, .topbar nav button:hover { background: rgba(255,255,255,0.12); }
+  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 14px; line-height: 1.5; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 210px; background: var(--sidebar-color); color: #DCEAE6; flex-shrink: 0; padding: 18px 0; }
+  .brand { font-weight: 700; font-size: 14px; color: #FBFAF5; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 8px; letter-spacing: 0.2px; }
+  .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #B9D3CB; text-decoration: none; border-left: 3px solid transparent; }
+  .nav-item:hover { background: rgba(255,255,255,0.05); }
+  .nav-item.active { background: rgba(255,255,255,0.08); border-left-color: var(--gold); color: #FBFAF5; font-weight: 600; }
+  .logout-item { display: block; padding: 10px 20px; font-size: 12.5px; color: #E3A9A9; cursor: pointer; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
  
-  .page { max-width: 640px; margin: 32px auto; padding: 0 20px; }
-  .card { background: #FBFAF5; border: 1px solid #D8D2BE; border-radius: 6px; padding: 26px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); }
-  h1 { font-size: 22px; color: #1F4E5F; margin: 0 0 18px; }
-  .field-grid { display: grid; grid-template-columns: 140px 1fr; row-gap: 10px; font-size: 14px; }
-  .field-grid strong { color: #4A5A6B; font-weight: 600; }
+  .main { flex: 1; padding: 36px 40px; max-width: 640px; }
+  .card { background: var(--paper); border-radius: 8px; padding: 28px 30px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
+  h1 { font-weight: 700; font-size: 21px; margin: 0 0 18px; }
+  .field-grid { display: grid; grid-template-columns: 130px 1fr; row-gap: 12px; font-size: 14px; }
+  .field-grid strong { color: var(--ink-soft); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.4px; }
  
-  label { display: block; font-size: 13px; margin: 12px 0 4px; color: #1B2A3F; }
-  input { width: 100%; padding: 9px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+  label { display: block; font-size: 13px; margin: 12px 0 4px; }
+  input { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; background: #FFFEFB; }
  
   .row { display: flex; gap: 10px; margin-top: 18px; }
-  button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
-  button.btn-outline { background: none; border: 1px solid #1F4E5F; color: #1F4E5F; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  button.btn-primary { background: var(--sidebar-color); color: var(--paper); border: none; padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  button.btn-outline { background: none; border: 1px solid var(--sidebar-color); color: var(--sidebar-color); padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
  
-  #loading, #notLoggedIn { text-align: center; color: #4A5A6B; padding: 60px 0; }
-  #editMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
-  #editMsg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
-  #editMsg.error { background: #F3E4E3; color: #A3273A; display: block; }
+  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
+  #editMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  #editMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
+  #editMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
   .hidden { display: none; }
 </style>
 </head>
 <body>
  
-<div class="topbar">
-  <div class="brand">PHOS AI Education</div>
-  <nav>
-    <a href="teachers.html">Teachers</a>
-    <button onclick="logout()">Log Out</button>
-  </nav>
-</div>
- 
-<div class="page">
-  <div id="loading">Loading your school…</div>
-  <div id="notLoggedIn" style="display:none;" class="card">
-    You're not logged in. <a href="login.html">Go to login</a>
+<div class="app">
+  <div class="sidebar" id="sidebarEl">
+    <div class="brand">PHOS AI Education</div>
+    <a class="nav-item active" href="dashboard.html">Dashboard</a>
+    <a class="nav-item" href="teachers.html">Teachers</a>
+    <a class="nav-item" href="school-overview.html">School Overview</a>
+    <div class="logout-item" onclick="logout()">Log Out</div>
   </div>
  
-  <div id="dashboardContent" style="display:none;" class="card">
- 
-    <div id="viewMode">
-      <h1 id="schoolName"></h1>
-      <div class="field-grid">
-        <strong>Address</strong><span id="schoolAddress"></span>
-        <strong>Contact email</strong><span id="schoolEmail"></span>
-        <strong>Contact phone</strong><span id="schoolPhone"></span>
-      </div>
-      <div class="row">
-        <button class="btn-outline" onclick="startEdit()">Edit School Info</button>
-      </div>
+  <div class="main">
+    <div id="loading">Loading your school…</div>
+    <div id="notLoggedIn" style="display:none;" class="card">
+      You're not logged in. <a href="login.html">Go to login</a>
     </div>
  
-    <div id="editModeBox" class="hidden">
-      <h1>Edit School Info</h1>
-      <label>School name</label>
-      <input id="edit_name">
-      <label>Address</label>
-      <input id="edit_address">
-      <label>Contact email</label>
-      <input id="edit_contact_email">
-      <label>Contact phone</label>
-      <input id="edit_contact_phone">
-      <div class="row">
-        <button class="btn-primary" onclick="saveEdit()">Save Changes</button>
-        <button class="btn-outline" onclick="cancelEdit()">Cancel</button>
-      </div>
-      <div id="editMsg"></div>
-    </div>
+    <div id="dashboardContent" style="display:none;" class="card">
  
+      <div id="viewMode">
+        <h1 id="schoolName"></h1>
+        <div class="field-grid">
+          <strong>Address</strong><span id="schoolAddress"></span>
+          <strong>Contact email</strong><span id="schoolEmail"></span>
+          <strong>Contact phone</strong><span id="schoolPhone"></span>
+        </div>
+        <div class="row">
+          <button class="btn-outline" onclick="startEdit()">Edit School Info</button>
+        </div>
+      </div>
+ 
+      <div id="editModeBox" class="hidden">
+        <h1>Edit School Info</h1>
+        <label>School name</label>
+        <input id="edit_name">
+        <label>Address</label>
+        <input id="edit_address">
+        <label>Contact email</label>
+        <input id="edit_contact_email">
+        <label>Contact phone</label>
+        <input id="edit_contact_phone">
+        <div class="row">
+          <button class="btn-primary" onclick="saveEdit()">Save Changes</button>
+          <button class="btn-outline" onclick="cancelEdit()">Cancel</button>
+        </div>
+        <div id="editMsg"></div>
+      </div>
+ 
+    </div>
   </div>
 </div>
  
@@ -121,7 +127,7 @@
     }
     if (!data) {
       document.getElementById('notLoggedIn').style.display = 'block';
-      document.getElementById('notLoggedIn').textContent = 'This login isn\'t linked to a school admin account. If you\'re a teacher, use teacher-dashboard.html instead.';
+      document.getElementById('notLoggedIn').textContent = 'This login isn\'t linked to a school admin account.';
       return;
     }
  
@@ -195,3 +201,4 @@
  
 </body>
 </html>
+ 

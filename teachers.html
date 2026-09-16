@@ -4,87 +4,93 @@
 <meta charset="UTF-8">
 <title>PHOS AI Education — Teachers</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --ink: #16283A; --ink-soft: #5B6B7A; --sidebar-color: #17414F; --teal-tint: #E7EFEE;
+    --gold: #B0822B; --sage: #4C7A63; --sage-tint: #E7F0EA;
+    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
+  }
   * { box-sizing: border-box; }
-  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EEF1EC; margin: 0; color: #1B2A3F; }
-  .topbar {
-    background: #1F4E5F; color: #FBFAF5; padding: 14px 24px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .topbar .brand { font-weight: 700; font-size: 15px; letter-spacing: 0.3px; }
-  .topbar nav a, .topbar nav button {
-    color: #EAF1F0; text-decoration: none; font-size: 13px; margin-left: 18px;
-    background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px;
-    border-radius: 4px; cursor: pointer;
-  }
-  .topbar nav a:hover, .topbar nav button:hover { background: rgba(255,255,255,0.12); }
+  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 13.5px; line-height: 1.5; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 210px; background: var(--sidebar-color); color: #DCEAE6; flex-shrink: 0; padding: 18px 0; }
+  .brand { font-weight: 700; font-size: 14px; color: #FBFAF5; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 8px; letter-spacing: 0.2px; }
+  .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #B9D3CB; text-decoration: none; border-left: 3px solid transparent; }
+  .nav-item:hover { background: rgba(255,255,255,0.05); }
+  .nav-item.active { background: rgba(255,255,255,0.08); border-left-color: var(--gold); color: #FBFAF5; font-weight: 600; }
+  .logout-item { display: block; padding: 10px 20px; font-size: 12.5px; color: #E3A9A9; cursor: pointer; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
  
-  .page { max-width: 680px; margin: 32px auto; padding: 0 20px; }
-  .card { background: #FBFAF5; border: 1px solid #D8D2BE; border-radius: 6px; padding: 26px; box-shadow: 0 1px 4px rgba(27,42,63,0.08); margin-bottom: 20px; }
-  h1 { font-size: 20px; color: #1F4E5F; margin: 0 0 16px; }
+  .main { flex: 1; padding: 36px 40px; max-width: 680px; }
+  .card { background: var(--paper); border-radius: 8px; padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
+  h1 { font-weight: 700; font-size: 20px; margin: 0 0 16px; }
  
-  label { display: block; font-size: 13px; margin: 12px 0 4px; color: #1B2A3F; }
-  input { width: 100%; padding: 9px; border: 1px solid #C9C2A8; border-radius: 4px; font-size: 14px; }
+  label { display: block; font-size: 13px; margin: 12px 0 4px; }
+  input { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; background: #FFFEFB; }
  
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 8px 6px; border-bottom: 2px solid #1F4E5F; color: #4A5A6B; font-size: 11px; text-transform: uppercase; }
-  td { padding: 8px 6px; border-bottom: 1px solid #E5DFC9; }
+  th { text-align: left; padding: 8px 6px; border-bottom: 2px solid var(--sidebar-color); color: var(--ink-soft); font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td { padding: 8px 6px; border-bottom: 1px solid #EFE9D6; }
   .subject-tag {
-    display: inline-block; background: #E1EBEA; color: #1F4E5F; font-size: 11px;
+    display: inline-block; background: var(--teal-tint); color: var(--sidebar-color); font-size: 11px;
     padding: 2px 8px; border-radius: 10px; margin: 2px 3px 2px 0;
   }
  
-  button.btn-primary { background: #1F4E5F; color: white; border: none; padding: 10px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 18px; }
-  #teacherMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
-  #teacherMsg.success { background: #E1EBEA; color: #1F4E5F; display: block; }
-  #teacherMsg.error { background: #F3E4E3; color: #A3273A; display: block; }
-  #loading, #notLoggedIn { text-align: center; color: #4A5A6B; padding: 60px 0; }
+  button.btn-primary { background: var(--sidebar-color); color: var(--paper); border: none; padding: 10px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; margin-top: 18px; font-weight: 500; }
+  #teacherMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  #teacherMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
+  #teacherMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
+  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
+  .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; padding: 10px 0; }
   .hidden { display: none; }
-  .empty-note { font-size: 13px; color: #4A5A6B; font-style: italic; padding: 10px 0; }
 </style>
 </head>
 <body>
  
-<div class="topbar">
-  <div class="brand">PHOS AI Education</div>
-  <nav>
-    <a href="dashboard.html">Dashboard</a>
-    <button onclick="logout()">Log Out</button>
-  </nav>
-</div>
- 
-<div class="page">
-  <div id="loading">Loading…</div>
-  <div id="notLoggedIn" style="display:none;" class="card">
-    You're not logged in. <a href="login.html">Go to login</a>
+<div class="app">
+  <div class="sidebar" id="sidebarEl">
+    <div class="brand">PHOS AI Education</div>
+    <a class="nav-item" href="dashboard.html">Dashboard</a>
+    <a class="nav-item active" href="teachers.html">Teachers</a>
+    <a class="nav-item" href="school-overview.html">School Overview</a>
+    <div class="logout-item" onclick="logout()">Log Out</div>
   </div>
  
-  <div id="content" style="display:none;">
-    <div class="card">
-      <h1>Teachers</h1>
-      <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Subjects</th></tr></thead>
-        <tbody id="teacherRows"></tbody>
-      </table>
-      <div id="emptyNote" class="empty-note hidden">No teachers added yet.</div>
+  <div class="main">
+    <div id="loading">Loading…</div>
+    <div id="notLoggedIn" style="display:none;" class="card">
+      You're not logged in. <a href="login.html">Go to login</a>
     </div>
  
-    <div class="card">
-      <h1>Add a Teacher</h1>
-      <label>Teacher's name</label>
-      <input id="t_name" placeholder="e.g. Mrs. Adebayo">
-      <label>Email</label>
-      <input id="t_email" placeholder="teacher@school.com">
-      <label>Phone</label>
-      <input id="t_phone" placeholder="Optional">
-      <label>Subject(s)</label>
-      <input id="t_subject" placeholder="e.g. Mathematics, Physics">
-      <label>Class taught</label>
-      <input id="t_class" placeholder="e.g. JSS1">
-      <label>Temporary password</label>
-      <input id="t_password" type="password" placeholder="Give this to the teacher">
-      <button class="btn-primary" onclick="addTeacher()">Add Teacher</button>
-      <div id="teacherMsg"></div>
+    <div id="content" style="display:none;">
+      <div class="card">
+        <h1>Teachers</h1>
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Class</th><th>Subjects</th></tr></thead>
+          <tbody id="teacherRows"></tbody>
+        </table>
+        <div id="emptyNote" class="empty-note hidden">No teachers added yet.</div>
+      </div>
+ 
+      <div class="card">
+        <h1>Add a Teacher</h1>
+        <label>Teacher's name</label>
+        <input id="t_name" placeholder="e.g. Mrs. Adebayo">
+        <label>Email</label>
+        <input id="t_email" placeholder="teacher@school.com">
+        <label>Phone</label>
+        <input id="t_phone" placeholder="Optional">
+        <label>Subject(s)</label>
+        <input id="t_subject" placeholder="e.g. Mathematics, Physics">
+        <label>Class taught</label>
+        <input id="t_class" placeholder="e.g. JSS1">
+        <label>Temporary password</label>
+        <input id="t_password" type="password" placeholder="Give this to the teacher">
+        <button class="btn-primary" onclick="addTeacher()">Add Teacher</button>
+        <div id="teacherMsg"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -95,13 +101,20 @@
  
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  
-  // Separate, non-session-persisting client used only for creating teacher
-  // logins, so the admin's own session is never disturbed.
   const supabaseAdminAction = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
  
   let currentSchool = null;
+ 
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function subjectTags(subjectString) {
+    if (!subjectString) return '—';
+    return subjectString.split(',').map(s => s.trim()).filter(Boolean)
+      .map(s => '<span class="subject-tag">' + escapeHtml(s) + '</span>').join('');
+  }
  
   async function init() {
     const { data: { user } } = await supabaseClient.auth.getUser();
@@ -131,16 +144,6 @@
     loadTeachers();
   }
  
-  function escapeHtml(str) {
-    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
- 
-  function subjectTags(subjectString) {
-    if (!subjectString) return '—';
-    return subjectString.split(',').map(s => s.trim()).filter(Boolean)
-      .map(s => '<span class="subject-tag">' + escapeHtml(s) + '</span>').join('');
-  }
- 
   async function loadTeachers() {
     const { data, error } = await supabaseClient
       .from('teachers')
@@ -165,7 +168,7 @@
  
     data.forEach(t => {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + escapeHtml(t.name) + '</td><td>' + escapeHtml(t.email) + '</td><td>' + subjectTags(t.subject) + '</td>';
+      tr.innerHTML = '<td>' + escapeHtml(t.name) + '</td><td>' + escapeHtml(t.email) + '</td><td>' + escapeHtml(t.class_name || '—') + '</td><td>' + subjectTags(t.subject) + '</td>';
       rows.appendChild(tr);
     });
   }
@@ -230,4 +233,3 @@
  
 </body>
 </html>
- 
