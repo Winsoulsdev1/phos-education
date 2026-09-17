@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PHOS AI Education — Student Profile</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -140,7 +141,7 @@
           <input type="text" id="p_phone" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
           <label style="display:block;font-size:13px;margin:8px 0 4px;">Temporary password <span style="font-weight:400;color:var(--ink-soft);">(only needed if this parent doesn't already have an account here)</span></label>
           <input type="password" id="p_password" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
-          <div style="margin-top:12px;"><button class="btn-outline" onclick="addParent()">Add Parent</button></div>
+          <div style="margin-top:12px;"><button class="btn-outline" id="addParentBtn" onclick="addParent()">Add Parent</button></div>
           <div id="parentMsg"></div>
         </div>
       </div>
@@ -272,6 +273,7 @@
     const phone = document.getElementById('p_phone').value.trim();
     const password = document.getElementById('p_password').value;
     const msg = document.getElementById('parentMsg');
+    const btn = document.getElementById('addParentBtn');
  
     if (!name || !email) {
       msg.className = 'error';
@@ -288,6 +290,9 @@
     // Check if this email already has a parent login (e.g. same parent,
     // another child at this school) — if so, reuse that login instead of
     // trying to create a duplicate one.
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+ 
     const { data: existingParent } = await supabaseClient
       .from('parents')
       .select('user_id')
@@ -301,12 +306,17 @@
       userId = existingParent.user_id;
     } else {
       if (!password) {
+        btn.disabled = false;
+        btn.textContent = 'Add Parent';
         msg.className = 'error';
         msg.textContent = 'A temporary password is required for a new parent account.';
         return;
       }
+      btn.textContent = 'Creating login…';
       const { data: authData, error: authError } = await supabaseAdminAction.auth.signUp({ email, password });
       if (authError) {
+        btn.disabled = false;
+        btn.textContent = 'Add Parent';
         msg.className = 'error';
         msg.textContent = 'Error creating login: ' + authError.message;
         return;
@@ -314,12 +324,17 @@
       userId = authData.user.id;
     }
  
+    btn.textContent = 'Saving…';
+ 
     const { error } = await supabaseClient.from('parents').insert([{
       school_id: currentStudent.school_id,
       student_id: currentStudent.id,
       user_id: userId,
       name, email, phone
     }]);
+ 
+    btn.disabled = false;
+    btn.textContent = 'Add Parent';
  
     if (error) {
       msg.className = 'error';
@@ -348,4 +363,3 @@
  
 </body>
 </html>
- 

@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PHOS AI Education — Teachers</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -89,7 +90,7 @@
         <input id="t_class" placeholder="e.g. JSS1">
         <label>Temporary password</label>
         <input id="t_password" type="password" placeholder="Give this to the teacher">
-        <button class="btn-primary" onclick="addTeacher()">Add Teacher</button>
+        <button class="btn-primary" id="addTeacherBtn" onclick="addTeacher()">Add Teacher</button>
         <div id="teacherMsg"></div>
       </div>
     </div>
@@ -195,9 +196,15 @@
       return;
     }
  
+    const btn = document.getElementById('addTeacherBtn');
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+ 
     const { data: authData, error: authError } = await supabaseAdminAction.auth.signUp({ email, password });
  
     if (authError) {
+      btn.disabled = false;
+      btn.textContent = 'Add Teacher';
       msg.className = 'error';
       msg.textContent = 'Error creating login: ' + authError.message;
       return;
@@ -206,6 +213,9 @@
     const { error } = await supabaseClient
       .from('teachers')
       .insert([{ school_id: currentSchool.id, user_id: authData.user.id, name, email, phone, subject, class_name }]);
+ 
+    btn.disabled = false;
+    btn.textContent = 'Add Teacher';
  
     if (error) {
       msg.className = 'error';

@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PHOS AI Education — Assessments</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -103,7 +104,7 @@
         <input id="newAssessmentName" placeholder="e.g. Assessment 2">
         <label>Topics (comma-separated)</label>
         <input id="newAssessmentTopics" placeholder="e.g. Algebra, Simultaneous Equations">
-        <div style="margin-top:12px;"><button class="btn-primary" onclick="createAssessment()">Create Assessment</button></div>
+        <div style="margin-top:12px;"><button class="btn-primary" id="createAssessmentBtn" onclick="createAssessment()">Create Assessment</button></div>
         <div id="createMsg"></div>
       </div>
  
@@ -117,7 +118,7 @@
         <div id="csvImportMsg"></div>
         <table class="register-table"><thead><tr id="registerHead"></tr></thead><tbody id="registerRows"></tbody></table>
         <div id="emptyNote" class="empty-note hidden">No students found for this class yet — add them on the Students page.</div>
-        <div style="margin-top:14px;"><button class="btn-primary" onclick="saveScores()">Save Scores</button></div>
+        <div style="margin-top:14px;"><button class="btn-primary" id="saveScoresBtn" onclick="saveScores()">Save Scores</button></div>
         <div id="msg"></div>
       </div>
  
@@ -244,6 +245,7 @@
     const name = document.getElementById('newAssessmentName').value.trim();
     const topicsRaw = document.getElementById('newAssessmentTopics').value.trim();
     const msg = document.getElementById('createMsg');
+    const btn = document.getElementById('createAssessmentBtn');
  
     if (!name || !topicsRaw) {
       msg.className = 'error';
@@ -251,9 +253,15 @@
       return;
     }
  
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+ 
     const { error } = await supabaseClient
       .from('assessments')
       .insert([{ school_id: currentTeacher.school_id, class_name: currentTeacher.class_name, name, topics: topicsRaw }]);
+ 
+    btn.disabled = false;
+    btn.textContent = 'Create Assessment';
  
     if (error) {
       msg.className = 'error';
@@ -483,6 +491,9 @@
  
   async function saveScores() {
     const msg = document.getElementById('msg');
+    const btn = document.getElementById('saveScoresBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
     const topics = topicsForCurrent();
  
     const rowsToInsert = [];
@@ -506,6 +517,8 @@
       .from('scores').delete().eq('assessment_id', currentAssessment.id);
  
     if (deleteError) {
+      btn.disabled = false;
+      btn.textContent = 'Save Scores';
       msg.className = 'error';
       msg.textContent = 'Error clearing old scores: ' + deleteError.message;
       return;
@@ -514,12 +527,16 @@
     if (rowsToInsert.length) {
       const { error: insertError } = await supabaseClient.from('scores').insert(rowsToInsert);
       if (insertError) {
+        btn.disabled = false;
+        btn.textContent = 'Save Scores';
         msg.className = 'error';
         msg.textContent = 'Error saving scores: ' + insertError.message;
         return;
       }
     }
  
+    btn.disabled = false;
+    btn.textContent = 'Save Scores';
     msg.className = 'success';
     msg.textContent = 'Scores saved.';
     renderPatternsAndWarnings();
