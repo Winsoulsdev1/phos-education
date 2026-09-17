@@ -43,6 +43,9 @@
   button.btn-outline { background: none; border: 1px solid var(--sidebar-color); color: var(--sidebar-color); padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
   #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
   .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; }
+  #parentMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  #parentMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
+  #parentMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
  
   @media print {
     .sidebar, .no-print { display: none !important; }
@@ -86,6 +89,29 @@
         <div id="historyBlocks"></div>
         <div id="emptyHistory" class="empty-note hidden">No assessment scores recorded for this student yet.</div>
       </div>
+ 
+      <div class="card no-print">
+        <div class="section-title">Parent / Guardian</div>
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead>
+          <tbody id="parentRows"></tbody>
+        </table>
+        <div id="emptyParent" class="empty-note hidden">No parent linked yet.</div>
+ 
+        <div style="margin-top:16px; padding-top:16px; border-top:1px dashed var(--border);">
+          <div style="font-weight:600; font-size:13px; margin-bottom:8px;">Add a Parent Account</div>
+          <label style="display:block;font-size:13px;margin:8px 0 4px;">Name</label>
+          <input type="text" id="p_name" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+          <label style="display:block;font-size:13px;margin:8px 0 4px;">Email</label>
+          <input type="text" id="p_email" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+          <label style="display:block;font-size:13px;margin:8px 0 4px;">Phone (optional)</label>
+          <input type="text" id="p_phone" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+          <label style="display:block;font-size:13px;margin:8px 0 4px;">Temporary password</label>
+          <input type="password" id="p_password" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+          <div style="margin-top:12px;"><button class="btn-outline" onclick="addParent()">Add Parent</button></div>
+          <div id="parentMsg"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -94,6 +120,12 @@
   const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  // Separate, non-session-persisting client used only for creating parent
+  // logins — so adding a parent never logs the current admin/teacher out.
+  const supabaseAdminAction = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
  
   const bands = [
     { label: 'Excellent', min: 70, concern: false },
@@ -142,8 +174,12 @@
     document.getElementById('notes').textContent = student.notes || '—';
     document.getElementById('content').style.display = 'block';
  
+    currentStudent = student;
     await loadHistory(studentId);
+    await loadParents(studentId);
   }
+ 
+  let currentStudent = null;
  
   async function loadHistory(studentId) {
     const { data: scoreRows } = await supabaseClient.from('scores').select('*').eq('student_id', studentId);
@@ -182,6 +218,70 @@
     }).join('');
   }
  
+  async function loadParents(studentId) {
+    const { data, error } = await supabaseClient.from('parents').select('*').eq('student_id', studentId);
+    const rows = document.getElementById('parentRows');
+    const emptyNote = document.getElementById('emptyParent');
+ 
+    if (error || !data || !data.length) {
+      rows.innerHTML = '';
+      emptyNote.classList.remove('hidden');
+      return;
+    }
+    emptyNote.classList.add('hidden');
+    rows.innerHTML = data.map(p =>
+      '<tr><td>' + escapeHtml(p.name) + '</td><td>' + escapeHtml(p.email) + '</td><td>' + escapeHtml(p.phone || '—') + '</td></tr>'
+    ).join('');
+  }
+ 
+  async function addParent() {
+    const name = document.getElementById('p_name').value.trim();
+    const email = document.getElementById('p_email').value.trim();
+    const phone = document.getElementById('p_phone').value.trim();
+    const password = document.getElementById('p_password').value;
+    const msg = document.getElementById('parentMsg');
+ 
+    if (!name || !email || !password) {
+      msg.className = 'error';
+      msg.textContent = 'Name, email, and a temporary password are required.';
+      return;
+    }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      msg.className = 'error';
+      msg.textContent = 'Please enter a valid email address.';
+      return;
+    }
+ 
+    const { data: authData, error: authError } = await supabaseAdminAction.auth.signUp({ email, password });
+    if (authError) {
+      msg.className = 'error';
+      msg.textContent = 'Error creating login: ' + authError.message;
+      return;
+    }
+ 
+    const { error } = await supabaseClient.from('parents').insert([{
+      school_id: currentStudent.school_id,
+      student_id: currentStudent.id,
+      user_id: authData.user.id,
+      name, email, phone
+    }]);
+ 
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Error saving parent: ' + error.message;
+      return;
+    }
+ 
+    msg.className = 'success';
+    msg.textContent = 'Parent added! Give them their email and temporary password to log in.';
+    document.getElementById('p_name').value = '';
+    document.getElementById('p_email').value = '';
+    document.getElementById('p_phone').value = '';
+    document.getElementById('p_password').value = '';
+    await loadParents(currentStudent.id);
+  }
+ 
   async function logout() {
     await supabaseClient.auth.signOut();
     window.location.href = 'login.html';
@@ -192,4 +292,3 @@
  
 </body>
 </html>
- 

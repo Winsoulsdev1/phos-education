@@ -182,13 +182,23 @@
       return;
     }
  
+    const { data: parentMatch } = await supabaseClient
+      .from('parents')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+ 
+    if (parentMatch) {
+      window.location.href = 'parent-dashboard.html';
+      return;
+    }
+ 
     btn.disabled = false;
     btn.textContent = 'Log In';
     msg.className = 'error';
-    msg.textContent = 'Logged in, but no matching school or teacher account was found.';
+    msg.textContent = 'Logged in, but no matching account was found.';
   }
 </script>
  
 </body>
 </html>
- 

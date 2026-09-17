@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PHOS AI Education — Parent Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #16283A; --ink-soft: #5B6B7A; --sidebar-color: #17414F; --teal-tint: #E7EFEE;
+    --gold: #B0822B; --sage: #4C7A63; --sage-tint: #E7F0EA;
+    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 14px; line-height: 1.5; }
+  .topbar { background: var(--sidebar-color); color: #FBFAF5; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .topbar .brand { font-weight: 700; font-size: 15px; }
+  .topbar button { color: #EAF1F0; font-size: 13px; background: none; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+ 
+  .page { max-width: 640px; margin: 32px auto; padding: 0 20px; }
+  .card { background: var(--paper); border-radius: 8px; padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
+  h1 { font-weight: 700; font-size: 20px; margin: 0 0 3px; }
+  .subhead { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
+  .section-title { font-weight: 600; font-size: 14px; color: var(--sidebar-color); margin: 0 0 12px; }
+ 
+  .field-grid { display: grid; grid-template-columns: 110px 1fr; row-gap: 10px; font-size: 14px; }
+  .field-grid strong { color: var(--ink-soft); font-weight: 600; font-size: 11.5px; text-transform: uppercase; }
+ 
+  .assessment-block { padding: 14px 0; border-bottom: 1px solid #EFE9D6; }
+  .assessment-block:last-child { border-bottom: none; }
+  .assessment-block h3 { font-size: 13.5px; margin: 0 0 8px; }
+  .score-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .score-row .val { font-weight: 600; }
+  .score-row .val.attention { color: var(--red); }
+  .score-row .val.strength { color: var(--sage); }
+ 
+  select { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; margin-bottom: 16px; }
+  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
+  .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; }
+</style>
+</head>
+<body>
+ 
+<div class="topbar">
+  <div class="brand">PHOS AI Education</div>
+  <button onclick="logout()">Log Out</button>
+</div>
+ 
+<div class="page">
+  <div id="loading">Loading…</div>
+  <div id="notLoggedIn" style="display:none;" class="card">
+    You're not logged in, or this account isn't linked to a parent record. <a href="login.html">Go to login</a>
+  </div>
+ 
+  <div id="content" style="display:none;">
+    <div class="card" id="childSelectCard" style="display:none;">
+      <div class="section-title">Your Children</div>
+      <select id="childSelect" onchange="onSelectChild()"></select>
+    </div>
+ 
+    <div class="card">
+      <h1 id="studentName"></h1>
+      <div class="subhead" id="studentMeta"></div>
+      <div class="field-grid">
+        <strong>Attendance</strong><span id="attendance"></span>
+        <strong>Teacher's Note</strong><span id="notes"></span>
+      </div>
+    </div>
+ 
+    <div class="card">
+      <div class="section-title">Assessment History</div>
+      <div id="historyBlocks"></div>
+      <div id="emptyHistory" class="empty-note hidden">No assessment scores recorded yet.</div>
+    </div>
+  </div>
+</div>
+ 
+<script>
+  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+ 
+  const bands = [
+    { label: 'Excellent', min: 70, concern: false },
+    { label: 'Very Good', min: 60, concern: false },
+    { label: 'Good', min: 50, concern: false },
+    { label: 'Fair', min: 40, concern: true },
+    { label: 'Needs Attention', min: 0, concern: true }
+  ];
+  function getBand(score) {
+    const sorted = bands.slice().sort((a, b) => b.min - a.min);
+    for (const b of sorted) if (score >= b.min) return b;
+    return sorted[sorted.length - 1];
+  }
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+ 
+  let myChildren = [];
+ 
+  async function init() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    const { data: parentRows, error } = await supabaseClient.from('parents').select('*').eq('user_id', user.id);
+ 
+    document.getElementById('loading').style.display = 'none';
+ 
+    if (error || !parentRows || !parentRows.length) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    const studentIds = parentRows.map(p => p.student_id);
+    const { data: students } = await supabaseClient.from('students').select('*').in('id', studentIds);
+    myChildren = students || [];
+ 
+    if (!myChildren.length) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      return;
+    }
+ 
+    if (myChildren.length > 1) {
+      document.getElementById('childSelectCard').style.display = 'block';
+      document.getElementById('childSelect').innerHTML = myChildren.map(c => '<option value="' + c.id + '">' + escapeHtml(c.name) + '</option>').join('');
+    }
+ 
+    document.getElementById('content').style.display = 'block';
+    loadChild(myChildren[0].id);
+  }
+ 
+  function onSelectChild() {
+    loadChild(document.getElementById('childSelect').value);
+  }
+ 
+  function loadChild(studentId) {
+    const student = myChildren.find(c => String(c.id) === String(studentId));
+    if (!student) return;
+ 
+    document.getElementById('studentName').textContent = student.name;
+    document.getElementById('studentMeta').textContent = (student.class_name || '') + (student.admission_number ? ' · ' + student.admission_number : '');
+    document.getElementById('attendance').textContent = student.attendance != null ? student.attendance + '%' : '—';
+    document.getElementById('notes').textContent = student.notes || '—';
+ 
+    loadHistory(studentId);
+  }
+ 
+  async function loadHistory(studentId) {
+    const { data: scoreRows } = await supabaseClient.from('scores').select('*').eq('student_id', studentId);
+ 
+    const box = document.getElementById('historyBlocks');
+    const emptyNote = document.getElementById('emptyHistory');
+ 
+    if (!scoreRows || !scoreRows.length) {
+      box.innerHTML = '';
+      emptyNote.classList.remove('hidden');
+      return;
+    }
+    emptyNote.classList.add('hidden');
+ 
+    const assessmentIds = [...new Set(scoreRows.map(r => r.assessment_id))];
+    const { data: assessmentRows } = await supabaseClient.from('assessments').select('*').in('id', assessmentIds);
+    const assessmentsById = {};
+    (assessmentRows || []).forEach(a => { assessmentsById[a.id] = a; });
+ 
+    const byAssessment = {};
+    scoreRows.forEach(r => {
+      if (!byAssessment[r.assessment_id]) byAssessment[r.assessment_id] = [];
+      byAssessment[r.assessment_id].push(r);
+    });
+ 
+    const sortedIds = Object.keys(byAssessment).sort((a, b) => a - b);
+ 
+    box.innerHTML = sortedIds.map(aid => {
+      const a = assessmentsById[aid];
+      const rows = byAssessment[aid];
+      const rowsHtml = rows.map(r => {
+        const band = getBand(r.score);
+        return '<div class="score-row"><span>' + escapeHtml(r.topic) + '</span><span class="val ' + (band.concern ? 'attention' : 'strength') + '">' + r.score + ' (' + band.label + ')</span></div>';
+      }).join('');
+      return '<div class="assessment-block"><h3>' + escapeHtml(a ? a.name : 'Assessment') + '</h3>' + rowsHtml + '</div>';
+    }).join('');
+  }
+ 
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'login.html';
+  }
+ 
+  init();
+</script>
+ 
+</body>
+</html>
