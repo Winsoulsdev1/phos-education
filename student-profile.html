@@ -43,9 +43,30 @@
   button.btn-outline { background: none; border: 1px solid var(--sidebar-color); color: var(--sidebar-color); padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
   #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
   .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; }
+  html { scroll-behavior: smooth; }
+  .quick-nav {
+    position: sticky; top: 0; z-index: 10; display: flex; gap: 8px; flex-wrap: wrap;
+    background: var(--page-bg); padding: 10px 0 14px; margin-bottom: 4px;
+  }
+  .quick-nav a {
+    font-size: 12.5px; font-weight: 500; color: var(--sidebar-color); text-decoration: none;
+    background: var(--paper); border: 1px solid var(--border); padding: 7px 13px; border-radius: 16px;
+  }
+  .quick-nav a:hover { background: var(--teal-tint); }
   #parentMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
   #parentMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
   #parentMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
+ 
+  html { scroll-behavior: smooth; }
+  .jump-nav {
+    position: fixed; right: 18px; bottom: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 40;
+  }
+  .jump-btn {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--sidebar-color); color: #FBFAF5;
+    display: flex; align-items: center; justify-content: center; font-size: 19px; text-decoration: none;
+    box-shadow: 0 2px 6px rgba(22,40,58,0.25); transition: transform 0.12s ease;
+  }
+  .jump-btn:hover { transform: scale(1.08); }
  
   @media print {
     .sidebar, .no-print { display: none !important; }
@@ -57,6 +78,11 @@
 <body>
  
 <div class="app">
+  <div class="jump-nav no-print">
+    <a href="#sec-history" class="jump-btn" title="Assessment History">📊</a>
+    <a href="#sec-parent" class="jump-btn" title="Parent / Guardian">👪</a>
+  </div>
+ 
   <div class="sidebar no-print">
     <div class="brand">PHOS AI Education</div>
     <a class="nav-item" href="teacher-dashboard.html">Dashboard</a>
@@ -73,7 +99,13 @@
     </div>
  
     <div id="content" style="display:none;">
-      <div class="card">
+      <div class="quick-nav no-print">
+        <a href="#sec-overview">Overview</a>
+        <a href="#sec-history">Assessment History</a>
+        <a href="#sec-parent">Parent / Guardian</a>
+      </div>
+ 
+      <div class="card" id="sec-overview">
         <div class="no-print" style="margin-bottom:14px;"><a href="students.html">&larr; Back to Students</a></div>
         <h1 id="studentName"></h1>
         <div class="subhead" id="studentMeta"></div>
@@ -84,13 +116,13 @@
         <div class="no-print" style="margin-top:16px;"><button class="btn-outline" onclick="window.print()">Print / Save as PDF</button></div>
       </div>
  
-      <div class="card">
+      <div class="card" id="sec-history">
         <div class="section-title">Assessment History</div>
         <div id="historyBlocks"></div>
         <div id="emptyHistory" class="empty-note hidden">No assessment scores recorded for this student yet.</div>
       </div>
  
-      <div class="card no-print">
+      <div class="card no-print" id="sec-parent">
         <div class="section-title">Parent / Guardian</div>
         <table>
           <thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead>
@@ -106,7 +138,7 @@
           <input type="text" id="p_email" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
           <label style="display:block;font-size:13px;margin:8px 0 4px;">Phone (optional)</label>
           <input type="text" id="p_phone" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
-          <label style="display:block;font-size:13px;margin:8px 0 4px;">Temporary password</label>
+          <label style="display:block;font-size:13px;margin:8px 0 4px;">Temporary password <span style="font-weight:400;color:var(--ink-soft);">(only needed if this parent doesn't already have an account here)</span></label>
           <input type="password" id="p_password" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
           <div style="margin-top:12px;"><button class="btn-outline" onclick="addParent()">Add Parent</button></div>
           <div id="parentMsg"></div>
@@ -241,9 +273,9 @@
     const password = document.getElementById('p_password').value;
     const msg = document.getElementById('parentMsg');
  
-    if (!name || !email || !password) {
+    if (!name || !email) {
       msg.className = 'error';
-      msg.textContent = 'Name, email, and a temporary password are required.';
+      msg.textContent = 'Name and email are required.';
       return;
     }
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -253,17 +285,39 @@
       return;
     }
  
-    const { data: authData, error: authError } = await supabaseAdminAction.auth.signUp({ email, password });
-    if (authError) {
-      msg.className = 'error';
-      msg.textContent = 'Error creating login: ' + authError.message;
-      return;
+    // Check if this email already has a parent login (e.g. same parent,
+    // another child at this school) — if so, reuse that login instead of
+    // trying to create a duplicate one.
+    const { data: existingParent } = await supabaseClient
+      .from('parents')
+      .select('user_id')
+      .eq('email', email)
+      .limit(1)
+      .maybeSingle();
+ 
+    let userId;
+ 
+    if (existingParent) {
+      userId = existingParent.user_id;
+    } else {
+      if (!password) {
+        msg.className = 'error';
+        msg.textContent = 'A temporary password is required for a new parent account.';
+        return;
+      }
+      const { data: authData, error: authError } = await supabaseAdminAction.auth.signUp({ email, password });
+      if (authError) {
+        msg.className = 'error';
+        msg.textContent = 'Error creating login: ' + authError.message;
+        return;
+      }
+      userId = authData.user.id;
     }
  
     const { error } = await supabaseClient.from('parents').insert([{
       school_id: currentStudent.school_id,
       student_id: currentStudent.id,
-      user_id: authData.user.id,
+      user_id: userId,
       name, email, phone
     }]);
  
@@ -274,7 +328,9 @@
     }
  
     msg.className = 'success';
-    msg.textContent = 'Parent added! Give them their email and temporary password to log in.';
+    msg.textContent = existingParent
+      ? 'Linked existing parent account to this student.'
+      : 'Parent added! Give them their email and temporary password to log in.';
     document.getElementById('p_name').value = '';
     document.getElementById('p_email').value = '';
     document.getElementById('p_phone').value = '';
@@ -292,3 +348,4 @@
  
 </body>
 </html>
+ 
