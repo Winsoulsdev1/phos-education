@@ -3,69 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PHOS AI Education — School Dashboard</title>
+<title>PHOS AI Education — Admin Home</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #16283A; --ink-soft: #5B6B7A; --sidebar-color: #17414F; --teal-tint: #E7EFEE;
-    --gold: #B0822B; --sage: #4C7A63; --sage-tint: #E7F0EA;
-    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
+    --ink: #16283A; --ink-soft: #5B6B7A; --sidebar-color: #17414F;
+    --teal-tint: #E7EFEE; --gold: #B0822B; --gold-tint: #FBF0DB;
+    --sage: #4C7A63; --sage-tint: #E7F0EA; --red: #9C2C3C; --red-tint: #F5E4E4;
+    --plum: #5B4E8C; --plum-tint: #ECE9F6;
+    --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
   }
   * { box-sizing: border-box; }
-  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 14px; line-height: 1.5; }
-  .app { display: flex; min-height: 100vh; }
-  .sidebar { width: 210px; background: var(--sidebar-color); color: #DCEAE6; flex-shrink: 0; padding: 18px 0; }
-  .brand { font-weight: 700; font-size: 14px; color: #FBFAF5; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); margin-bottom: 8px; letter-spacing: 0.2px; }
-  .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #B9D3CB; text-decoration: none; border-left: 3px solid transparent; }
-  .nav-item:hover { background: rgba(255,255,255,0.05); }
-  .nav-item.active { background: rgba(255,255,255,0.08); border-left-color: var(--gold); color: #FBFAF5; font-weight: 600; }
-  .logout-item { display: block; padding: 10px 20px; font-size: 12.5px; color: #E3A9A9; cursor: pointer; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); }
  
-  .main { flex: 1; padding: 36px 40px; max-width: 640px; }
-  .card { background: var(--paper); border-radius: 8px; padding: 28px 30px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
-  h1 { font-weight: 700; font-size: 21px; margin: 0 0 18px; }
-  .field-grid { display: grid; grid-template-columns: 130px 1fr; row-gap: 12px; font-size: 14px; }
-  .field-grid strong { color: var(--ink-soft); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; }
+  .brand-mark { font-weight: 800; font-size: 17px; color: var(--sidebar-color); text-align: center; flex: 1; }
+  .brand-mark span { display: block; font-size: 11px; font-weight: 500; color: var(--ink-soft); }
+  .logout-btn { background: var(--paper); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; color: var(--red); cursor: pointer; }
  
-  label { display: block; font-size: 13px; margin: 12px 0 4px; }
-  input { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; background: #FFFEFB; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 18px 100px; }
  
-  .row { display: flex; gap: 10px; margin-top: 18px; }
-  button.btn-primary { background: var(--sidebar-color); color: var(--paper); border: none; padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
-  button.btn-outline { background: none; border: 1px solid var(--sidebar-color); color: var(--sidebar-color); padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
+  .tile {
+    background: var(--paper); border-radius: 16px; padding: 16px 8px; text-align: center;
+    text-decoration: none; color: var(--ink); box-shadow: 0 2px 6px rgba(22,40,58,0.06);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .tile:active, .tile:hover { transform: translateY(-2px) scale(1.03); }
+  .tile-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .tile-label { font-size: 11.5px; font-weight: 600; line-height: 1.25; }
  
-  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
-  #editMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  .icon-gold { background: var(--gold-tint); }
+  .icon-teal { background: var(--teal-tint); }
+  .icon-sage { background: var(--sage-tint); }
+  .icon-plum { background: var(--plum-tint); }
+  .icon-red { background: var(--red-tint); }
+ 
+  .stat-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
+  .stat-box {
+    background: var(--paper); border-radius: 16px; padding: 16px 12px; text-align: center;
+    box-shadow: 0 2px 6px rgba(22,40,58,0.06); border-top: 4px solid var(--sidebar-color);
+  }
+  .stat-box.gold { border-top-color: var(--gold); }
+  .stat-box.sage { border-top-color: var(--sage); }
+  .stat-num { font-weight: 800; font-size: 24px; }
+  .stat-lbl { font-size: 10.5px; color: var(--ink-soft); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+ 
+  .card { background: var(--paper); border-radius: 16px; padding: 20px 22px; box-shadow: 0 2px 6px rgba(22,40,58,0.06); }
+  .card h2 { font-size: 15px; margin: 0 0 4px; }
+  .card .subhead { font-size: 12px; color: var(--ink-soft); margin-bottom: 16px; }
+  .field-grid { display: grid; grid-template-columns: 90px 1fr; row-gap: 10px; font-size: 13.5px; }
+  .field-grid strong { color: var(--ink-soft); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  label { display: block; font-size: 12.5px; margin: 10px 0 4px; }
+  input { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+  .row { display: flex; gap: 8px; margin-top: 16px; }
+  button.btn-primary { background: var(--sidebar-color); color: var(--paper); border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  button.btn-outline { background: none; border: 1px solid var(--sidebar-color); color: var(--sidebar-color); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  #editMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 8px; display: none; }
   #editMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
   #editMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
   .hidden { display: none; }
+ 
+  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 20px; }
 </style>
 </head>
 <body>
  
-<div class="app">
-  <div class="sidebar" id="sidebarEl">
-    <div class="brand">PHOS AI Education</div>
-    <a class="nav-item active" href="dashboard.html">Dashboard</a>
-    <a class="nav-item" href="teachers.html">Teachers</a>
-    <a class="nav-item" href="all-students.html">Students</a>
-    <a class="nav-item" href="school-overview.html">School Overview</a>
-    <div class="logout-item" onclick="logout()">Log Out</div>
+<div id="loading">Loading…</div>
+<div id="notLoggedIn" style="display:none;" class="wrap">
+  <div class="card" style="margin-top:40px;">You're not logged in. <a href="login.html">Go to login</a></div>
+</div>
+ 
+<div id="content" style="display:none;">
+ 
+  <div class="topbar">
+    <div style="width:60px;"></div>
+    <div class="brand-mark">PHOS AI<span id="schoolLabel"></span></div>
+    <button class="logout-btn" onclick="logout()">Log Out</button>
   </div>
  
-  <div class="main">
-    <div id="loading">Loading your school…</div>
-    <div id="notLoggedIn" style="display:none;" class="card">
-      You're not logged in. <a href="login.html">Go to login</a>
+  <div class="wrap">
+ 
+    <div class="tile-grid">
+      <a class="tile" href="teachers.html#add-teacher">
+        <div class="tile-icon icon-teal">🧑‍🏫</div>
+        <div class="tile-label">Add Teacher</div>
+      </a>
+      <a class="tile" href="all-students.html">
+        <div class="tile-icon icon-gold">🧑‍🎓</div>
+        <div class="tile-label">Students</div>
+      </a>
+      <a class="tile" href="school-overview.html">
+        <div class="tile-icon icon-sage">📈</div>
+        <div class="tile-label">School Overview</div>
+      </a>
+      <a class="tile" href="teachers.html">
+        <div class="tile-icon icon-plum">👥</div>
+        <div class="tile-label">All Teachers</div>
+      </a>
+      <a class="tile" href="settings.html">
+        <div class="tile-icon icon-red">⚙️</div>
+        <div class="tile-label">Settings</div>
+      </a>
+      <a class="tile" href="#sec-school-info">
+        <div class="tile-icon icon-gold">🏫</div>
+        <div class="tile-label">School Info</div>
+      </a>
     </div>
  
-    <div id="dashboardContent" style="display:none;" class="card">
+    <div class="stat-strip">
+      <div class="stat-box gold"><div class="stat-num" id="statStudents">0</div><div class="stat-lbl">Students</div></div>
+      <div class="stat-box"><div class="stat-num" id="statTeachers">0</div><div class="stat-lbl">Teachers</div></div>
+      <div class="stat-box sage"><div class="stat-num" id="statClasses">0</div><div class="stat-lbl">Classes</div></div>
+    </div>
  
+    <div class="card" id="sec-school-info">
       <div id="viewMode">
-        <h1 id="schoolName"></h1>
+        <h2 id="schoolName"></h2>
+        <div class="subhead">Your school's details</div>
         <div class="field-grid">
           <strong>Address</strong><span id="schoolAddress"></span>
           <strong>Contact email</strong><span id="schoolEmail"></span>
@@ -77,7 +136,7 @@
       </div>
  
       <div id="editModeBox" class="hidden">
-        <h1>Edit School Info</h1>
+        <h2>Edit School Info</h2>
         <label>School name</label>
         <input id="edit_name">
         <label>Address</label>
@@ -92,22 +151,20 @@
         </div>
         <div id="editMsg"></div>
       </div>
- 
     </div>
+ 
   </div>
 </div>
  
 <script>
   const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
- 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  
   let currentSchool = null;
  
   async function loadDashboard() {
     const { data: { user } } = await supabaseClient.auth.getUser();
- 
     if (!user) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('notLoggedIn').style.display = 'block';
@@ -115,27 +172,21 @@
     }
  
     const { data, error } = await supabaseClient
-      .from('schools')
-      .select('*')
-      .eq('admin_user_id', user.id)
-      .maybeSingle();
+      .from('schools').select('*').eq('admin_user_id', user.id).maybeSingle();
  
     document.getElementById('loading').style.display = 'none';
  
-    if (error) {
+    if (error || !data) {
       document.getElementById('notLoggedIn').style.display = 'block';
-      document.getElementById('notLoggedIn').textContent = 'Could not load your school: ' + error.message;
-      return;
-    }
-    if (!data) {
-      document.getElementById('notLoggedIn').style.display = 'block';
-      document.getElementById('notLoggedIn').textContent = 'This login isn\'t linked to a school admin account.';
       return;
     }
  
     currentSchool = data;
+    document.getElementById('schoolLabel').textContent = data.name;
     renderView();
-    document.getElementById('dashboardContent').style.display = 'block';
+    document.getElementById('content').style.display = 'block';
+ 
+    loadStats();
   }
  
   function renderView() {
@@ -143,6 +194,20 @@
     document.getElementById('schoolAddress').textContent = currentSchool.address || '—';
     document.getElementById('schoolEmail').textContent = currentSchool.contact_email || '—';
     document.getElementById('schoolPhone').textContent = currentSchool.contact_phone || '—';
+  }
+ 
+  async function loadStats() {
+    const [{ data: students }, { data: teachers }] = await Promise.all([
+      supabaseClient.from('students').select('class_name').eq('school_id', currentSchool.id),
+      supabaseClient.from('teachers').select('class_name').eq('school_id', currentSchool.id)
+    ]);
+    const classNames = new Set();
+    (students || []).forEach(s => { if (s.class_name) classNames.add(s.class_name); });
+    (teachers || []).forEach(t => { if (t.class_name) classNames.add(t.class_name); });
+ 
+    document.getElementById('statStudents').textContent = (students || []).length;
+    document.getElementById('statTeachers').textContent = (teachers || []).length;
+    document.getElementById('statClasses').textContent = classNames.size;
   }
  
   function startEdit() {
@@ -174,7 +239,6 @@
     }
  
     const { data: { user } } = await supabaseClient.auth.getUser();
- 
     const { error } = await supabaseClient
       .from('schools')
       .update({ name, address, contact_email, contact_phone })
@@ -187,6 +251,7 @@
     }
  
     currentSchool = { ...currentSchool, name, address, contact_email, contact_phone };
+    document.getElementById('schoolLabel').textContent = name;
     renderView();
     msg.className = 'success';
     msg.textContent = 'Saved!';
@@ -200,7 +265,6 @@
  
   loadDashboard();
 </script>
- 
  
 <!-- Floating Quick Actions -->
 <div class="fab-wrap no-print">
@@ -352,3 +416,4 @@
  
 </body>
 </html>
+ 
