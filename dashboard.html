@@ -109,10 +109,10 @@
         <div class="tile-icon icon-red">⚙️</div>
         <div class="tile-label">Settings</div>
       </a>
-      <a class="tile" href="#sec-school-info">
+      <div class="tile" onclick="toggleSchoolInfo()" style="cursor:pointer;">
         <div class="tile-icon icon-gold">🏫</div>
         <div class="tile-label">School Info</div>
-      </a>
+      </div>
     </div>
  
     <div class="stat-strip">
@@ -121,7 +121,7 @@
       <div class="stat-box sage"><div class="stat-num" id="statClasses">0</div><div class="stat-lbl">Classes</div></div>
     </div>
  
-    <div class="card" id="sec-school-info">
+    <div class="card hidden" id="sec-school-info">
       <div id="viewMode">
         <h2 id="schoolName"></h2>
         <div class="subhead">Your school's details</div>
@@ -208,6 +208,14 @@
     document.getElementById('statStudents').textContent = (students || []).length;
     document.getElementById('statTeachers').textContent = (teachers || []).length;
     document.getElementById('statClasses').textContent = classNames.size;
+  }
+ 
+  function toggleSchoolInfo() {
+    const box = document.getElementById('sec-school-info');
+    box.classList.toggle('hidden');
+    if (!box.classList.contains('hidden')) {
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   }
  
   function startEdit() {
@@ -416,4 +424,3 @@
  
 </body>
 </html>
- 
