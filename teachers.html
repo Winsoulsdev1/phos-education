@@ -251,12 +251,23 @@
     <a class="fab-item" href="all-students.html" style="--i:2"><span class="fab-emoji">🧑‍🎓</span><span class="fab-label">Students</span></a>
     <a class="fab-item" href="school-overview.html" style="--i:1"><span class="fab-emoji">📈</span><span class="fab-label">School Overview</span></a>
   </div>
-  <button class="fab-main" id="fabMain" onclick="toggleFab()"><span id="fabIcon">✦</span></button>
+  <button class="fab-main" id="fabMain" onclick="toggleFab()">
+    <span id="fabIcon">✦</span>
+    <span class="fab-badge hidden" id="fabBadge">0</span>
+  </button>
 </div>
  
 <style>
+  .fab-badge {
+    position: absolute; top: -4px; right: -4px; background: var(--red, #9C2C3C); color: #FBFAF5;
+    font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; padding: 0 5px;
+    box-shadow: 0 0 0 2px var(--paper, #FDFBF6);
+  }
+  .fab-badge.hidden { display: none; }
   .fab-wrap { position: fixed; right: 22px; bottom: 26px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; }
   .fab-main {
+    position: relative;
     width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
     background: radial-gradient(circle at 30% 30%, #E0A94A, #B0822B);
     color: #FBFAF5; font-size: 26px; box-shadow: 0 4px 14px rgba(176,130,43,0.45);
@@ -321,7 +332,65 @@
       }
     }
   });
+ 
+  // Notification badge: school-wide count of students flagged by Early
+  // Warning, across every class. Self-contained scope to avoid colliding
+  // with identifiers the page itself already defines.
+  (function () {
+    var fabBands = [
+      { min: 70, concern: false }, { min: 60, concern: false }, { min: 50, concern: false },
+      { min: 40, concern: true }, { min: 0, concern: true }
+    ];
+    function fabAvg(scoreRows, topics) {
+      var vals = scoreRows.filter(function (r) { return topics.indexOf(r.topic) !== -1; }).map(function (r) { return r.score; }).filter(function (v) { return v != null; });
+      if (!vals.length) return null;
+      return Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length);
+    }
+ 
+    async function updateFabBadge() {
+      if (typeof supabaseClient === 'undefined') return;
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        const { data: school } = await supabaseClient.from('schools').select('*').eq('admin_user_id', user.id).maybeSingle();
+        if (!school) return;
+ 
+        const [{ data: students }, { data: assessments }, { data: scores }] = await Promise.all([
+          supabaseClient.from('students').select('*').eq('school_id', school.id),
+          supabaseClient.from('assessments').select('*').eq('school_id', school.id),
+          supabaseClient.from('scores').select('*').eq('school_id', school.id)
+        ]);
+ 
+        const classNames = [...new Set((students || []).map(function (s) { return s.class_name; }).filter(Boolean))];
+        var flaggedCount = 0;
+ 
+        classNames.forEach(function (className) {
+          const classAssessments = (assessments || []).filter(function (a) { return a.class_name === className; }).sort(function (a, b) { return a.id - b.id; });
+          if (classAssessments.length < 2) return;
+          const latest = classAssessments[classAssessments.length - 1];
+          const previous = classAssessments[classAssessments.length - 2];
+          const latestTopics = latest.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+          const prevTopics = previous.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+ 
+          (students || []).filter(function (s) { return s.class_name === className; }).forEach(function (s) {
+            const currAvg = fabAvg((scores || []).filter(function (r) { return r.assessment_id === latest.id && r.student_id === s.id; }), latestTopics);
+            const prevAvg = fabAvg((scores || []).filter(function (r) { return r.assessment_id === previous.id && r.student_id === s.id; }), prevTopics);
+            if (currAvg !== null && prevAvg !== null && currAvg - prevAvg <= -5) flaggedCount++;
+          });
+        });
+ 
+        const badge = document.getElementById('fabBadge');
+        if (flaggedCount > 0) {
+          badge.textContent = flaggedCount;
+          badge.classList.remove('hidden');
+        }
+      } catch (e) { /* badge is best-effort, fail silently */ }
+    }
+ 
+    updateFabBadge();
+  })();
 </script>
  
 </body>
 </html>
+ 

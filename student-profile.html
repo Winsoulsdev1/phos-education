@@ -56,7 +56,10 @@
   .quick-nav a:hover { background: var(--teal-tint); }
   #parentMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
   #parentMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
-  #parentMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
+  #parentMsg.error, #studentLoginMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
+  #studentLoginMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  #studentLoginMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
+  .hidden { display: none; }
  
   html { scroll-behavior: smooth; }
  
@@ -131,6 +134,19 @@
           <div id="parentMsg"></div>
         </div>
       </div>
+ 
+      <div class="card no-print" id="sec-student-login">
+        <div class="section-title">Student's Own Login</div>
+        <div id="studentLoginStatus"></div>
+        <div id="studentLoginForm" style="margin-top:12px;">
+          <label style="display:block;font-size:13px;margin:8px 0 4px;">Email</label>
+          <input type="text" id="sl_email" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+          <label style="display:block;font-size:13px;margin:8px 0 4px;">Temporary password</label>
+          <input type="password" id="sl_password" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+          <div style="margin-top:12px;"><button class="btn-outline" id="createStudentLoginBtn" onclick="createStudentLogin()">Create Student Login</button></div>
+          <div id="studentLoginMsg"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -194,6 +210,7 @@
     document.getElementById('content').style.display = 'block';
  
     currentStudent = student;
+    renderStudentLoginStatus(student);
     await loadHistory(studentId);
     await loadParents(studentId);
   }
@@ -235,6 +252,69 @@
       }).join('');
       return '<div class="assessment-block"><h3>' + escapeHtml(a ? a.name : 'Assessment') + '</h3>' + rowsHtml + '</div>';
     }).join('');
+  }
+ 
+  function renderStudentLoginStatus(student) {
+    const status = document.getElementById('studentLoginStatus');
+    const form = document.getElementById('studentLoginForm');
+    if (student.user_id) {
+      status.innerHTML = '<div class="empty-note">This student already has their own login (' + escapeHtml(student.sl_email_display || 'created') + ').</div>';
+      form.classList.add('hidden');
+    } else {
+      status.innerHTML = '';
+      form.classList.remove('hidden');
+    }
+  }
+ 
+  async function createStudentLogin() {
+    const email = document.getElementById('sl_email').value.trim();
+    const password = document.getElementById('sl_password').value;
+    const msg = document.getElementById('studentLoginMsg');
+    const btn = document.getElementById('createStudentLoginBtn');
+ 
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      msg.className = 'error';
+      msg.textContent = 'Please enter a valid email address.';
+      return;
+    }
+    if (!password || password.length < 6) {
+      msg.className = 'error';
+      msg.textContent = 'Password must be at least 6 characters.';
+      return;
+    }
+ 
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+ 
+    const { data: authData, error: authError } = await supabaseAdminAction.auth.signUp({ email, password });
+    if (authError) {
+      btn.disabled = false;
+      btn.textContent = 'Create Student Login';
+      msg.className = 'error';
+      msg.textContent = 'Error creating login: ' + authError.message;
+      return;
+    }
+ 
+    const { error } = await supabaseClient
+      .from('students')
+      .update({ user_id: authData.user.id })
+      .eq('id', currentStudent.id);
+ 
+    btn.disabled = false;
+    btn.textContent = 'Create Student Login';
+ 
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Login created, but error linking it: ' + error.message;
+      return;
+    }
+ 
+    currentStudent.user_id = authData.user.id;
+    currentStudent.sl_email_display = email;
+    msg.className = 'success';
+    msg.textContent = 'Student login created! Give them the email and password to log in.';
+    renderStudentLoginStatus(currentStudent);
   }
  
   async function loadParents(studentId) {
@@ -356,12 +436,23 @@
     <a class="fab-item" href="assessments.html#create-assessment" style="--i:2"><span class="fab-emoji">📝</span><span class="fab-label">New Assessment</span></a>
     <a class="fab-item" href="students.html#add-student" style="--i:1"><span class="fab-emoji">👪</span><span class="fab-label">Add Parent (pick child)</span></a>
   </div>
-  <button class="fab-main" id="fabMain" onclick="toggleFab()"><span id="fabIcon">✦</span></button>
+  <button class="fab-main" id="fabMain" onclick="toggleFab()">
+    <span id="fabIcon">✦</span>
+    <span class="fab-badge hidden" id="fabBadge">0</span>
+  </button>
 </div>
  
 <style>
+  .fab-badge {
+    position: absolute; top: -4px; right: -4px; background: var(--red, #9C2C3C); color: #FBFAF5;
+    font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; padding: 0 5px;
+    box-shadow: 0 0 0 2px var(--paper, #FDFBF6);
+  }
+  .fab-badge.hidden { display: none; }
   .fab-wrap { position: fixed; right: 22px; bottom: 26px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; }
   .fab-main {
+    position: relative;
     width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
     background: radial-gradient(circle at 30% 30%, #E0A94A, #B0822B);
     color: #FBFAF5; font-size: 26px; box-shadow: 0 4px 14px rgba(176,130,43,0.45);
@@ -427,8 +518,65 @@
       }
     }
   });
+ 
+  // Notification badge: count of students in the teacher's own class flagged
+  // by Early Warning (dropped since their previous assessment). Runs in its
+  // own scope so it never collides with identifiers the page itself defines.
+  (function () {
+    var fabBands = [
+      { min: 70, concern: false }, { min: 60, concern: false }, { min: 50, concern: false },
+      { min: 40, concern: true }, { min: 0, concern: true }
+    ];
+    function fabGetBand(score) {
+      var sorted = fabBands.slice().sort(function (a, b) { return b.min - a.min; });
+      for (var i = 0; i < sorted.length; i++) if (score >= sorted[i].min) return sorted[i];
+      return sorted[sorted.length - 1];
+    }
+    function fabAvg(scoreRows, topics) {
+      var vals = scoreRows.filter(function (r) { return topics.indexOf(r.topic) !== -1; }).map(function (r) { return r.score; }).filter(function (v) { return v != null; });
+      if (!vals.length) return null;
+      return Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length);
+    }
+ 
+    async function updateFabBadge() {
+      if (typeof supabaseClient === 'undefined') return;
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        const { data: teacher } = await supabaseClient.from('teachers').select('*').eq('user_id', user.id).maybeSingle();
+        if (!teacher) return;
+ 
+        const { data: assessmentRows } = await supabaseClient.from('assessments').select('*').eq('school_id', teacher.school_id).eq('class_name', teacher.class_name);
+        const sorted = (assessmentRows || []).slice().sort(function (a, b) { return a.id - b.id; });
+        if (sorted.length < 2) return;
+ 
+        const latest = sorted[sorted.length - 1];
+        const previous = sorted[sorted.length - 2];
+        const latestTopics = latest.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+        const prevTopics = previous.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+ 
+        const { data: students } = await supabaseClient.from('students').select('id').eq('school_id', teacher.school_id).eq('class_name', teacher.class_name);
+        const { data: latestScores } = await supabaseClient.from('scores').select('*').eq('assessment_id', latest.id);
+        const { data: prevScores } = await supabaseClient.from('scores').select('*').eq('assessment_id', previous.id);
+ 
+        var flaggedCount = 0;
+        (students || []).forEach(function (s) {
+          const currAvg = fabAvg((latestScores || []).filter(function (r) { return r.student_id === s.id; }), latestTopics);
+          const prevAvg = fabAvg((prevScores || []).filter(function (r) { return r.student_id === s.id; }), prevTopics);
+          if (currAvg !== null && prevAvg !== null && currAvg - prevAvg <= -5) flaggedCount++;
+        });
+ 
+        const badge = document.getElementById('fabBadge');
+        if (flaggedCount > 0) {
+          badge.textContent = flaggedCount;
+          badge.classList.remove('hidden');
+        }
+      } catch (e) { /* badge is best-effort, fail silently */ }
+    }
+ 
+    updateFabBadge();
+  })();
 </script>
  
 </body>
 </html>
- 

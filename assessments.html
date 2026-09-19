@@ -63,6 +63,12 @@
   .warning-detail { color: var(--ink-soft); font-size: 12px; }
  
   #msg, #createMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  .topic-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+  .topic-chip { font-size: 11.5px; padding: 4px 11px; border-radius: 13px; border: 1px dashed var(--border); color: var(--ink-soft); background: var(--paper); cursor: pointer; }
+  .topic-chip:hover { border-color: var(--sidebar-color); color: var(--sidebar-color); }
+  .ask-result-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EFE9D6; font-size: 13px; }
+  .ask-result-row:last-child { border-bottom: none; }
+  .ask-result-row .val { font-weight: 700; color: var(--red); }
   #msg.success, #createMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
   #msg.error, #createMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
   #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
@@ -103,6 +109,7 @@
         <label>Assessment name</label>
         <input id="newAssessmentName" placeholder="e.g. Assessment 2">
         <label>Topics (comma-separated)</label>
+        <div class="topic-chips" id="topicChips"></div>
         <input id="newAssessmentTopics" placeholder="e.g. Algebra, Simultaneous Equations">
         <div style="margin-top:12px;"><button class="btn-primary" id="createAssessmentBtn" onclick="createAssessment()">Create Assessment</button></div>
         <div id="createMsg"></div>
@@ -126,6 +133,13 @@
         <div class="section-title">Class Patterns</div>
         <div class="subhead">Topics where multiple students need attention, based on saved scores</div>
         <div id="patternRows"></div>
+      </div>
+ 
+      <div class="card" id="askCard" style="display:none;">
+        <div class="section-title">Ask: Who Needs Help?</div>
+        <div class="subhead">Pick a topic to see exactly which students are struggling with it</div>
+        <select id="askTopicSelect" onchange="askWhoNeedsHelp()"></select>
+        <div id="askResults"></div>
       </div>
  
       <div class="card" id="warningsCard" style="display:none;">
@@ -241,6 +255,21 @@
     await loadAssessments();
   }
  
+  const commonTopics = ['Algebra', 'Fractions', 'Simultaneous Equations', 'Geometry', 'Mensuration', 'Comprehension', 'Grammar', 'Essay Writing'];
+ 
+  function renderTopicChips() {
+    document.getElementById('topicChips').innerHTML = commonTopics.map(t =>
+      '<span class="topic-chip" onclick="addChipTopic(\'' + t.replace(/'/g, "\\'") + '\')">+ ' + t + '</span>'
+    ).join('');
+  }
+ 
+  function addChipTopic(topic) {
+    const input = document.getElementById('newAssessmentTopics');
+    const existing = input.value.split(',').map(t => t.trim()).filter(Boolean);
+    if (!existing.includes(topic)) existing.push(topic);
+    input.value = existing.join(', ');
+  }
+ 
   async function createAssessment() {
     const name = document.getElementById('newAssessmentName').value.trim();
     const topicsRaw = document.getElementById('newAssessmentTopics').value.trim();
@@ -298,8 +327,15 @@
     });
  
     document.getElementById('csvHint').textContent = 'CSV format: Name, ' + topicsForCurrent().join(', ');
+ 
+    const askCard = document.getElementById('askCard');
+    const askSelect = document.getElementById('askTopicSelect');
+    askCard.style.display = 'block';
+    askSelect.innerHTML = topicsForCurrent().map(t => '<option value="' + t.replace(/"/g, '&quot;') + '">' + t + '</option>').join('');
+    askWhoNeedsHelp();
     renderRegister();
     renderPatternsAndWarnings();
+    askWhoNeedsHelp();
   }
  
   function topicsForCurrent() {
@@ -489,6 +525,26 @@
     reader.readAsText(fileInput.files[0]);
   }
  
+  function askWhoNeedsHelp() {
+    const topic = document.getElementById('askTopicSelect').value;
+    const results = document.getElementById('askResults');
+    if (!topic) { results.innerHTML = ''; return; }
+ 
+    const struggling = students
+      .map(s => ({ name: s.name, score: currentScores[s.id] ? currentScores[s.id][topic] : null }))
+      .filter(s => s.score != null && !isNaN(s.score) && getBand(s.score).concern)
+      .sort((a, b) => a.score - b.score);
+ 
+    if (!struggling.length) {
+      results.innerHTML = '<div class="empty-note">No students are currently flagged for ' + escapeHtml(topic) + '.</div>';
+      return;
+    }
+ 
+    results.innerHTML = struggling.map(s =>
+      '<div class="ask-result-row"><span>' + escapeHtml(s.name) + '</span><span class="val">' + s.score + '</span></div>'
+    ).join('');
+  }
+ 
   async function saveScores() {
     const msg = document.getElementById('msg');
     const btn = document.getElementById('saveScoresBtn');
@@ -540,6 +596,7 @@
     msg.className = 'success';
     msg.textContent = 'Scores saved.';
     renderPatternsAndWarnings();
+    askWhoNeedsHelp();
   }
  
   async function logout() {
@@ -547,6 +604,7 @@
     window.location.href = 'login.html';
   }
  
+  renderTopicChips();
   init();
 </script>
  
@@ -559,12 +617,23 @@
     <a class="fab-item" href="assessments.html#create-assessment" style="--i:2"><span class="fab-emoji">📝</span><span class="fab-label">New Assessment</span></a>
     <a class="fab-item" href="students.html#add-student" style="--i:1"><span class="fab-emoji">👪</span><span class="fab-label">Add Parent (pick child)</span></a>
   </div>
-  <button class="fab-main" id="fabMain" onclick="toggleFab()"><span id="fabIcon">✦</span></button>
+  <button class="fab-main" id="fabMain" onclick="toggleFab()">
+    <span id="fabIcon">✦</span>
+    <span class="fab-badge hidden" id="fabBadge">0</span>
+  </button>
 </div>
  
 <style>
+  .fab-badge {
+    position: absolute; top: -4px; right: -4px; background: var(--red, #9C2C3C); color: #FBFAF5;
+    font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; padding: 0 5px;
+    box-shadow: 0 0 0 2px var(--paper, #FDFBF6);
+  }
+  .fab-badge.hidden { display: none; }
   .fab-wrap { position: fixed; right: 22px; bottom: 26px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; }
   .fab-main {
+    position: relative;
     width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
     background: radial-gradient(circle at 30% 30%, #E0A94A, #B0822B);
     color: #FBFAF5; font-size: 26px; box-shadow: 0 4px 14px rgba(176,130,43,0.45);
@@ -630,6 +699,64 @@
       }
     }
   });
+ 
+  // Notification badge: count of students in the teacher's own class flagged
+  // by Early Warning (dropped since their previous assessment). Runs in its
+  // own scope so it never collides with identifiers the page itself defines.
+  (function () {
+    var fabBands = [
+      { min: 70, concern: false }, { min: 60, concern: false }, { min: 50, concern: false },
+      { min: 40, concern: true }, { min: 0, concern: true }
+    ];
+    function fabGetBand(score) {
+      var sorted = fabBands.slice().sort(function (a, b) { return b.min - a.min; });
+      for (var i = 0; i < sorted.length; i++) if (score >= sorted[i].min) return sorted[i];
+      return sorted[sorted.length - 1];
+    }
+    function fabAvg(scoreRows, topics) {
+      var vals = scoreRows.filter(function (r) { return topics.indexOf(r.topic) !== -1; }).map(function (r) { return r.score; }).filter(function (v) { return v != null; });
+      if (!vals.length) return null;
+      return Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length);
+    }
+ 
+    async function updateFabBadge() {
+      if (typeof supabaseClient === 'undefined') return;
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        const { data: teacher } = await supabaseClient.from('teachers').select('*').eq('user_id', user.id).maybeSingle();
+        if (!teacher) return;
+ 
+        const { data: assessmentRows } = await supabaseClient.from('assessments').select('*').eq('school_id', teacher.school_id).eq('class_name', teacher.class_name);
+        const sorted = (assessmentRows || []).slice().sort(function (a, b) { return a.id - b.id; });
+        if (sorted.length < 2) return;
+ 
+        const latest = sorted[sorted.length - 1];
+        const previous = sorted[sorted.length - 2];
+        const latestTopics = latest.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+        const prevTopics = previous.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+ 
+        const { data: students } = await supabaseClient.from('students').select('id').eq('school_id', teacher.school_id).eq('class_name', teacher.class_name);
+        const { data: latestScores } = await supabaseClient.from('scores').select('*').eq('assessment_id', latest.id);
+        const { data: prevScores } = await supabaseClient.from('scores').select('*').eq('assessment_id', previous.id);
+ 
+        var flaggedCount = 0;
+        (students || []).forEach(function (s) {
+          const currAvg = fabAvg((latestScores || []).filter(function (r) { return r.student_id === s.id; }), latestTopics);
+          const prevAvg = fabAvg((prevScores || []).filter(function (r) { return r.student_id === s.id; }), prevTopics);
+          if (currAvg !== null && prevAvg !== null && currAvg - prevAvg <= -5) flaggedCount++;
+        });
+ 
+        const badge = document.getElementById('fabBadge');
+        if (flaggedCount > 0) {
+          badge.textContent = flaggedCount;
+          badge.classList.remove('hidden');
+        }
+      } catch (e) { /* badge is best-effort, fail silently */ }
+    }
+ 
+    updateFabBadge();
+  })();
 </script>
  
 </body>

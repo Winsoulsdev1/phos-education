@@ -52,6 +52,10 @@
   #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
   .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; padding: 8px 0; }
   .hidden { display: none; }
+  select { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; margin-bottom: 10px; background: #FFFEFB; }
+  .ask-result-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EFE9D6; font-size: 13px; }
+  .ask-result-row:last-child { border-bottom: none; }
+  .ask-result-row .val { font-weight: 700; color: var(--red); }
 </style>
 </head>
 <body>
@@ -108,6 +112,13 @@
         <div id="schoolWarningRows"></div>
         <div id="schoolWarningEmpty" class="empty-note hidden">No students currently show a declining trend.</div>
       </div>
+ 
+      <div class="card">
+        <div class="section-title">Ask About a Topic</div>
+        <div class="subhead">Pick a topic to see every student across the whole school currently flagged for it</div>
+        <select id="askTopicSelect" onchange="askWhoNeedsHelp()"></select>
+        <div id="askResults"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -124,6 +135,19 @@
     if (!subjectString) return '—';
     return subjectString.split(',').map(s => s.trim()).filter(Boolean).join(', ');
   }
+  const bands = [
+    { label: 'Excellent', min: 70, concern: false },
+    { label: 'Very Good', min: 60, concern: false },
+    { label: 'Good', min: 50, concern: false },
+    { label: 'Fair', min: 40, concern: true },
+    { label: 'Needs Attention', min: 0, concern: true }
+  ];
+  function getBand(score) {
+    const sorted = bands.slice().sort((a, b) => b.min - a.min);
+    for (const b of sorted) if (score >= b.min) return b;
+    return sorted[sorted.length - 1];
+  }
+ 
   function avgFromScores(scoreRows, topicList) {
     const vals = scoreRows.filter(r => topicList.includes(r.topic)).map(r => r.score).filter(v => v != null);
     if (!vals.length) return null;
@@ -181,6 +205,63 @@
     renderClassesAtAGlance(classNames, teacherList, studentList, assessmentList, scoreList);
     renderTeacherActivity(teacherList, assessmentList, scoreList);
     renderSchoolWideWarnings(classNames, studentList, assessmentList, scoreList);
+    setupAskTool(classNames, studentList, assessmentList, scoreList);
+  }
+ 
+  let askData = { students: [], assessmentList: [], scoreList: [] };
+ 
+  function setupAskTool(classNames, studentList, assessmentList, scoreList) {
+    askData = { students: studentList, assessmentList, scoreList };
+ 
+    // For each class, use its latest assessment's topics — that's the most
+    // current picture of what's being taught right now.
+    const topicSet = new Set();
+    classNames.forEach(className => {
+      const classAssessments = assessmentList.filter(a => a.class_name === className).sort((a, b) => a.id - b.id);
+      if (!classAssessments.length) return;
+      const latest = classAssessments[classAssessments.length - 1];
+      latest.topics.split(',').map(t => t.trim()).filter(Boolean).forEach(t => topicSet.add(t));
+    });
+ 
+    const select = document.getElementById('askTopicSelect');
+    const topics = [...topicSet].sort();
+    select.innerHTML = '<option value="">— Choose a topic —</option>' + topics.map(t => '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>').join('');
+  }
+ 
+  function askWhoNeedsHelp() {
+    const topic = document.getElementById('askTopicSelect').value;
+    const results = document.getElementById('askResults');
+    if (!topic) { results.innerHTML = ''; return; }
+ 
+    // For each class, find its latest assessment that includes this topic,
+    // then check every student's score on it.
+    const classNames = [...new Set(askData.students.map(s => s.class_name).filter(Boolean))];
+    const struggling = [];
+ 
+    classNames.forEach(className => {
+      const classAssessments = askData.assessmentList
+        .filter(a => a.class_name === className && a.topics.split(',').map(t => t.trim()).includes(topic))
+        .sort((a, b) => a.id - b.id);
+      if (!classAssessments.length) return;
+      const latest = classAssessments[classAssessments.length - 1];
+ 
+      askData.students.filter(s => s.class_name === className).forEach(s => {
+        const row = askData.scoreList.find(r => r.assessment_id === latest.id && r.student_id === s.id && r.topic === topic);
+        if (row && row.score != null && getBand(row.score).concern) {
+          struggling.push({ name: s.name, className, score: row.score });
+        }
+      });
+    });
+ 
+    if (!struggling.length) {
+      results.innerHTML = '<div class="empty-note">No students are currently flagged for ' + escapeHtml(topic) + '.</div>';
+      return;
+    }
+ 
+    struggling.sort((a, b) => a.score - b.score);
+    results.innerHTML = struggling.map(s =>
+      '<div class="ask-result-row"><span>' + escapeHtml(s.name) + ' — ' + escapeHtml(s.className) + '</span><span class="val">' + s.score + '</span></div>'
+    ).join('');
   }
  
   function renderClassesAtAGlance(classNames, teacherList, studentList, assessmentList, scoreList) {
@@ -304,12 +385,23 @@
     <a class="fab-item" href="all-students.html" style="--i:2"><span class="fab-emoji">🧑‍🎓</span><span class="fab-label">Students</span></a>
     <a class="fab-item" href="school-overview.html" style="--i:1"><span class="fab-emoji">📈</span><span class="fab-label">School Overview</span></a>
   </div>
-  <button class="fab-main" id="fabMain" onclick="toggleFab()"><span id="fabIcon">✦</span></button>
+  <button class="fab-main" id="fabMain" onclick="toggleFab()">
+    <span id="fabIcon">✦</span>
+    <span class="fab-badge hidden" id="fabBadge">0</span>
+  </button>
 </div>
  
 <style>
+  .fab-badge {
+    position: absolute; top: -4px; right: -4px; background: var(--red, #9C2C3C); color: #FBFAF5;
+    font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; padding: 0 5px;
+    box-shadow: 0 0 0 2px var(--paper, #FDFBF6);
+  }
+  .fab-badge.hidden { display: none; }
   .fab-wrap { position: fixed; right: 22px; bottom: 26px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; }
   .fab-main {
+    position: relative;
     width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
     background: radial-gradient(circle at 30% 30%, #E0A94A, #B0822B);
     color: #FBFAF5; font-size: 26px; box-shadow: 0 4px 14px rgba(176,130,43,0.45);
@@ -374,7 +466,65 @@
       }
     }
   });
+ 
+  // Notification badge: school-wide count of students flagged by Early
+  // Warning, across every class. Self-contained scope to avoid colliding
+  // with identifiers the page itself already defines.
+  (function () {
+    var fabBands = [
+      { min: 70, concern: false }, { min: 60, concern: false }, { min: 50, concern: false },
+      { min: 40, concern: true }, { min: 0, concern: true }
+    ];
+    function fabAvg(scoreRows, topics) {
+      var vals = scoreRows.filter(function (r) { return topics.indexOf(r.topic) !== -1; }).map(function (r) { return r.score; }).filter(function (v) { return v != null; });
+      if (!vals.length) return null;
+      return Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length);
+    }
+ 
+    async function updateFabBadge() {
+      if (typeof supabaseClient === 'undefined') return;
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) return;
+        const { data: school } = await supabaseClient.from('schools').select('*').eq('admin_user_id', user.id).maybeSingle();
+        if (!school) return;
+ 
+        const [{ data: students }, { data: assessments }, { data: scores }] = await Promise.all([
+          supabaseClient.from('students').select('*').eq('school_id', school.id),
+          supabaseClient.from('assessments').select('*').eq('school_id', school.id),
+          supabaseClient.from('scores').select('*').eq('school_id', school.id)
+        ]);
+ 
+        const classNames = [...new Set((students || []).map(function (s) { return s.class_name; }).filter(Boolean))];
+        var flaggedCount = 0;
+ 
+        classNames.forEach(function (className) {
+          const classAssessments = (assessments || []).filter(function (a) { return a.class_name === className; }).sort(function (a, b) { return a.id - b.id; });
+          if (classAssessments.length < 2) return;
+          const latest = classAssessments[classAssessments.length - 1];
+          const previous = classAssessments[classAssessments.length - 2];
+          const latestTopics = latest.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+          const prevTopics = previous.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+ 
+          (students || []).filter(function (s) { return s.class_name === className; }).forEach(function (s) {
+            const currAvg = fabAvg((scores || []).filter(function (r) { return r.assessment_id === latest.id && r.student_id === s.id; }), latestTopics);
+            const prevAvg = fabAvg((scores || []).filter(function (r) { return r.assessment_id === previous.id && r.student_id === s.id; }), prevTopics);
+            if (currAvg !== null && prevAvg !== null && currAvg - prevAvg <= -5) flaggedCount++;
+          });
+        });
+ 
+        const badge = document.getElementById('fabBadge');
+        if (flaggedCount > 0) {
+          badge.textContent = flaggedCount;
+          badge.classList.remove('hidden');
+        }
+      } catch (e) { /* badge is best-effort, fail silently */ }
+    }
+ 
+    updateFabBadge();
+  })();
 </script>
  
 </body>
 </html>
+ 
