@@ -3,127 +3,95 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SchoolOS — Admin Home</title>
+<title>SchoolOS — Admin Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #1E293B; --ink-soft: #64748B; --sidebar-color: #2D6CDF;
-    --teal-tint: #E3EEFF; --gold: #FFB020; --gold-tint: #FFF4DA;
-    --sage: #22A06B; --sage-tint: #E1F8ED; --red: #EF4444; --red-tint: #FDE8E8;
-    --plum: #8B5CF6; --plum-tint: #F1EBFE;
-    --paper: #FFFFFF; --page-bg: #EFF3FF; --border: #DCE6FA;
+    --ink: #1E293B; --ink-soft: #64748B; --sidebar-color: #2D6CDF; --teal-tint: #E3EEFF;
+    --gold: #FFB020; --sage: #22A06B; --sage-tint: #E1F8ED;
+    --red: #EF4444; --red-tint: #FDE8E8; --paper: #FFFFFF; --page-bg: #EFF3FF; --border: #DCE6FA;
   }
   * { box-sizing: border-box; }
-  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); }
+  body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 13.5px; line-height: 1.5; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 210px; background: var(--sidebar-color); color: #E6EEFF; flex-shrink: 0; padding: 18px 0; }
+  .brand { font-weight: 700; font-size: 14px; color: #FFFFFF; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.15); margin-bottom: 8px; letter-spacing: 0.2px; }
+  .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #D6E3FF; text-decoration: none; border-left: 3px solid transparent; }
+  .nav-item:hover { background: rgba(255,255,255,0.08); }
+  .nav-item.active { background: rgba(255,255,255,0.12); border-left-color: var(--gold); color: #FFFFFF; font-weight: 600; }
+  .logout-item { display: block; padding: 10px 20px; font-size: 12.5px; color: #FFD1D1; cursor: pointer; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.15); }
  
-  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; }
-  .brand-mark { font-weight: 800; font-size: 17px; color: var(--sidebar-color); text-align: center; flex: 1; }
-  .brand-mark span { display: block; font-size: 11px; font-weight: 500; color: var(--ink-soft); }
-  .logout-btn { background: var(--paper); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; color: var(--red); cursor: pointer; }
+  .main { flex: 1; padding: 36px 40px; max-width: 720px; }
+  .card { background: var(--paper); border-radius: 8px; padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(30,41,59,0.06); border: 1px solid var(--border); }
+  h1 { font-weight: 700; font-size: 20px; margin: 0 0 3px; }
+  .subhead { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
  
-  .wrap { max-width: 640px; margin: 0 auto; padding: 0 18px 100px; }
+  .clock-card { display: flex; justify-content: space-between; align-items: center; }
+  .clock-date { font-weight: 700; font-size: 17px; }
+  .clock-time { font-size: 26px; font-weight: 700; color: var(--sidebar-color); font-variant-numeric: tabular-nums; }
  
-  .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
-  .tile {
-    background: var(--paper); border-radius: 16px; padding: 16px 8px; text-align: center;
-    text-decoration: none; color: var(--ink); box-shadow: 0 2px 6px rgba(22,40,58,0.06);
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .tile:active, .tile:hover { transform: translateY(-2px) scale(1.03); }
-  .tile-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-  .tile-label { font-size: 11.5px; font-weight: 600; line-height: 1.25; }
+  .stat-strip { display: flex; gap: 14px; margin-bottom: 20px; }
+  .stat-box { flex: 1; background: var(--paper); border-radius: 8px; padding: 16px 18px; border-left: 4px solid var(--sidebar-color); box-shadow: 0 1px 3px rgba(30,41,59,0.06); }
+  .stat-box.gold { border-left-color: var(--gold); }
+  .stat-box.sage { border-left-color: var(--sage); }
+  .stat-box .num { font-weight: 700; font-size: 26px; line-height: 1; }
+  .stat-box .lbl { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
  
-  .icon-gold { background: var(--gold-tint); }
-  .icon-teal { background: var(--teal-tint); }
-  .icon-sage { background: var(--sage-tint); }
-  .icon-plum { background: var(--plum-tint); }
-  .icon-red { background: var(--red-tint); }
- 
-  .stat-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
-  .stat-box {
-    background: var(--paper); border-radius: 16px; padding: 16px 12px; text-align: center;
-    box-shadow: 0 2px 6px rgba(22,40,58,0.06); border-top: 4px solid var(--sidebar-color);
-  }
-  .stat-box.gold { border-top-color: var(--gold); }
-  .stat-box.sage { border-top-color: var(--sage); }
-  .stat-num { font-weight: 800; font-size: 24px; }
-  .stat-lbl { font-size: 10.5px; color: var(--ink-soft); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
- 
-  .card { background: var(--paper); border-radius: 16px; padding: 20px 22px; box-shadow: 0 2px 6px rgba(22,40,58,0.06); }
-  .card h2 { font-size: 15px; margin: 0 0 4px; }
-  .card .subhead { font-size: 12px; color: var(--ink-soft); margin-bottom: 16px; }
-  .field-grid { display: grid; grid-template-columns: 90px 1fr; row-gap: 10px; font-size: 13.5px; }
-  .field-grid strong { color: var(--ink-soft); font-weight: 600; font-size: 11px; text-transform: uppercase; }
-  label { display: block; font-size: 12.5px; margin: 10px 0 4px; }
-  input { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
-  .row { display: flex; gap: 8px; margin-top: 16px; }
-  button.btn-primary { background: var(--sidebar-color); color: var(--paper); border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
-  button.btn-outline { background: none; border: 1px solid var(--sidebar-color); color: var(--sidebar-color); padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; }
-  #editMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 8px; display: none; }
-  #editMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
-  #editMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
+  .field-grid { display: grid; grid-template-columns: 110px 1fr; row-gap: 12px; font-size: 14px; }
+  .field-grid strong { color: var(--ink-soft); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  label { display: block; font-size: 13px; margin: 12px 0 4px; }
+  input, textarea { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-family: inherit; }
+  textarea { resize: vertical; min-height: 100px; }
+  .row { display: flex; gap: 10px; margin-top: 18px; }
+  button.btn-primary { background: var(--sidebar-color); color: var(--paper); border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  button.btn-outline { background: none; border: 1px solid var(--sidebar-color); color: var(--sidebar-color); padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+  #editMsg, #notesMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
+  #editMsg.success, #notesMsg.success { background: var(--sage-tint); color: #1B5E43; display: block; }
+  #editMsg.error, #notesMsg.error { background: var(--red-tint); color: #8B1F1F; display: block; }
   .hidden { display: none; }
- 
-  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 20px; }
+  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
 </style>
 </head>
 <body>
  
-<div id="loading">Loading…</div>
-<div id="notLoggedIn" style="display:none;" class="wrap">
-  <div class="card" style="margin-top:40px;">You're not logged in. <a href="login.html">Go to login</a></div>
-</div>
- 
-<div id="content" style="display:none;">
- 
-  <div class="topbar">
-    <div style="width:60px;"></div>
-    <div class="brand-mark">SchoolOS<span id="schoolLabel"></span></div>
-    <button class="logout-btn" onclick="logout()">Log Out</button>
+<div class="app">
+  <div class="sidebar" id="sidebarEl">
+    <div class="brand">SchoolOS</div>
+    <a class="nav-item active" href="dashboard.html">Dashboard</a>
+    <a class="nav-item" href="teachers.html">Teachers</a>
+    <a class="nav-item" href="all-students.html">Students</a>
+    <a class="nav-item" href="school-overview.html">School Overview</a>
+    <a class="nav-item" href="settings.html">Settings</a>
+    <div class="logout-item" onclick="logout()">Log Out</div>
   </div>
  
-  <div class="wrap">
+  <div class="main">
+    <div id="loading">Loading your school…</div>
+    <div id="notLoggedIn" style="display:none;" class="card">
+      You're not logged in. <a href="login.html">Go to login</a>
+    </div>
  
-    <div class="tile-grid">
-      <a class="tile" href="teachers.html#add-teacher">
-        <div class="tile-icon icon-teal">🧑‍🏫</div>
-        <div class="tile-label">Add Teacher</div>
-      </a>
-      <a class="tile" href="all-students.html">
-        <div class="tile-icon icon-gold">🧑‍🎓</div>
-        <div class="tile-label">Students</div>
-      </a>
-      <a class="tile" href="school-overview.html">
-        <div class="tile-icon icon-sage">📈</div>
-        <div class="tile-label">School Overview</div>
-      </a>
-      <a class="tile" href="teachers.html">
-        <div class="tile-icon icon-plum">👥</div>
-        <div class="tile-label">All Teachers</div>
-      </a>
-      <a class="tile" href="settings.html">
-        <div class="tile-icon icon-red">⚙️</div>
-        <div class="tile-label">Settings</div>
-      </a>
-      <div class="tile" onclick="toggleSchoolInfo()" style="cursor:pointer;">
-        <div class="tile-icon icon-gold">🏫</div>
-        <div class="tile-label">School Info</div>
+    <div id="content" style="display:none;">
+ 
+      <div class="card clock-card">
+        <div>
+          <div class="clock-date" id="clockDate"></div>
+          <div class="subhead" id="schoolLabel" style="margin:2px 0 0;"></div>
+        </div>
+        <div class="clock-time" id="clockTime"></div>
       </div>
-    </div>
  
-    <div class="stat-strip">
-      <div class="stat-box gold"><div class="stat-num" id="statStudents">0</div><div class="stat-lbl">Students</div></div>
-      <div class="stat-box"><div class="stat-num" id="statTeachers">0</div><div class="stat-lbl">Teachers</div></div>
-      <div class="stat-box sage"><div class="stat-num" id="statClasses">0</div><div class="stat-lbl">Classes</div></div>
-    </div>
+      <div class="stat-strip">
+        <div class="stat-box gold"><div class="num" id="statStudents">0</div><div class="lbl">Students</div></div>
+        <div class="stat-box"><div class="num" id="statTeachers">0</div><div class="lbl">Teachers</div></div>
+        <div class="stat-box sage"><div class="num" id="statClasses">0</div><div class="lbl">Classes</div></div>
+      </div>
  
-    <div class="card hidden" id="sec-school-info">
-      <div id="viewMode">
-        <h2 id="schoolName"></h2>
+      <div class="card" id="viewMode">
+        <h1 id="schoolName"></h1>
         <div class="subhead">Your school's details</div>
         <div class="field-grid">
           <strong>Address</strong><span id="schoolAddress"></span>
@@ -135,8 +103,8 @@
         </div>
       </div>
  
-      <div id="editModeBox" class="hidden">
-        <h2>Edit School Info</h2>
+      <div class="card hidden" id="editModeBox">
+        <h1>Edit School Info</h1>
         <label>School name</label>
         <input id="edit_name">
         <label>Address</label>
@@ -151,17 +119,30 @@
         </div>
         <div id="editMsg"></div>
       </div>
-    </div>
  
+      <div class="card">
+        <h1>Notes / To-Do</h1>
+        <div class="subhead">A private scratchpad only you can see — saves automatically</div>
+        <textarea id="adminNotes" placeholder="e.g. Call Mrs. Idy about Term 2 dates..." onblur="saveNotes()"></textarea>
+        <div id="notesMsg"></div>
+      </div>
+ 
+    </div>
   </div>
 </div>
  
 <script>
-  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_URL = "https://qfjsgcyppbqilzfhkknj.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  
   let currentSchool = null;
+ 
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clockDate').textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('clockTime').textContent = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
  
   async function loadDashboard() {
     const { data: { user } } = await supabaseClient.auth.getUser();
@@ -176,16 +157,26 @@
  
     document.getElementById('loading').style.display = 'none';
  
-    if (error || !data) {
+    if (error) {
       document.getElementById('notLoggedIn').style.display = 'block';
+      document.getElementById('notLoggedIn').textContent = 'Could not load your school: ' + error.message;
+      return;
+    }
+    if (!data) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      document.getElementById('notLoggedIn').innerHTML = 'Logged in, but this login isn\'t linked to a school admin account. <a href="login.html">Go to login</a>';
       return;
     }
  
     currentSchool = data;
+    if (data.theme_color) document.getElementById('sidebarEl').style.background = data.theme_color;
     document.getElementById('schoolLabel').textContent = data.name;
+    document.getElementById('adminNotes').value = data.admin_notes || '';
     renderView();
     document.getElementById('content').style.display = 'block';
  
+    updateClock();
+    setInterval(updateClock, 1000);
     loadStats();
   }
  
@@ -208,14 +199,6 @@
     document.getElementById('statStudents').textContent = (students || []).length;
     document.getElementById('statTeachers').textContent = (teachers || []).length;
     document.getElementById('statClasses').textContent = classNames.size;
-  }
- 
-  function toggleSchoolInfo() {
-    const box = document.getElementById('sec-school-info');
-    box.classList.toggle('hidden');
-    if (!box.classList.contains('hidden')) {
-      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
   }
  
   function startEdit() {
@@ -266,6 +249,22 @@
     setTimeout(cancelEdit, 800);
   }
  
+  async function saveNotes() {
+    const notes = document.getElementById('adminNotes').value;
+    const msg = document.getElementById('notesMsg');
+    const { error } = await supabaseClient
+      .from('schools').update({ admin_notes: notes }).eq('id', currentSchool.id);
+    if (error) {
+      msg.className = 'error';
+      msg.textContent = 'Error saving notes: ' + error.message;
+      return;
+    }
+    currentSchool.admin_notes = notes;
+    msg.className = 'success';
+    msg.textContent = 'Saved.';
+    setTimeout(() => { msg.style.display = 'none'; }, 1500);
+  }
+ 
   async function logout() {
     await supabaseClient.auth.signOut();
     window.location.href = 'login.html';
@@ -290,7 +289,7 @@
  
 <style>
   .fab-badge {
-    position: absolute; top: -4px; right: -4px; background: var(--red, #EF4444); color: #FBFAF5;
+    position: absolute; top: -4px; right: -4px; background: var(--red, #EF4444); color: #FFFFFF;
     font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center; padding: 0 5px;
     box-shadow: 0 0 0 2px var(--paper, #FFFFFF);
@@ -301,7 +300,7 @@
     position: relative;
     width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
     background: radial-gradient(circle at 30% 30%, #FFC24D, #FFB020);
-    color: #FBFAF5; font-size: 26px; box-shadow: 0 4px 14px rgba(176,130,43,0.45);
+    color: #FFFFFF; font-size: 26px; box-shadow: 0 4px 14px rgba(176,130,43,0.45);
     display: flex; align-items: center; justify-content: center;
     animation: fab-breathe 2.6s ease-in-out infinite;
     transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -316,7 +315,7 @@
   .fab-menu { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-bottom: 14px; }
   .fab-item {
     display: flex; align-items: center; gap: 10px; text-decoration: none;
-    background: var(--sidebar-color, #2D6CDF); color: #FBFAF5; padding: 9px 16px 9px 9px;
+    background: var(--sidebar-color, #2D6CDF); color: #FFFFFF; padding: 9px 16px 9px 9px;
     border-radius: 30px; box-shadow: 0 3px 10px rgba(22,40,58,0.28); font-size: 13px; font-weight: 500;
     opacity: 0; transform: translateY(14px) scale(0.7); pointer-events: none;
     transition: opacity 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
