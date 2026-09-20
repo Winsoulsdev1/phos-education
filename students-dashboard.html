@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SchoolOS — Parent Dashboard</title>
+<title>SchoolOS — My Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +22,7 @@
  
   .page { max-width: 640px; margin: 32px auto; padding: 0 20px; }
   .card { background: var(--paper); border-radius: 8px; padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(22,40,58,0.06); border: 1px solid var(--border); }
-  h1 { font-weight: 700; font-size: 20px; margin: 0 0 3px; }
+  h1 { font-weight: 700; font-size: 21px; margin: 0 0 3px; }
   .subhead { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
   .section-title { font-weight: 600; font-size: 14px; color: var(--sidebar-color); margin: 0 0 12px; }
  
@@ -37,7 +37,6 @@
   .score-row .val.attention { color: var(--red); }
   .score-row .val.strength { color: var(--sage); }
  
-  select { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; margin-bottom: 16px; }
   #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
   .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; }
 </style>
@@ -52,15 +51,10 @@
 <div class="page">
   <div id="loading">Loading…</div>
   <div id="notLoggedIn" style="display:none;" class="card">
-    You're not logged in, or this account isn't linked to a parent record. <a href="login.html">Go to login</a>
+    You're not logged in, or this account isn't linked to a student record. <a href="login.html">Go to login</a>
   </div>
  
   <div id="content" style="display:none;">
-    <div class="card" id="childSelectCard" style="display:none;">
-      <div class="section-title">Your Children</div>
-      <select id="childSelect" onchange="onSelectChild()"></select>
-    </div>
- 
     <div class="card">
       <h1 id="studentName"></h1>
       <div class="subhead" id="studentMeta"></div>
@@ -71,7 +65,7 @@
     </div>
  
     <div class="card">
-      <div class="section-title">Assessment History</div>
+      <div class="section-title">My Assessment History</div>
       <div id="historyBlocks"></div>
       <div id="emptyHistory" class="empty-note hidden">No assessment scores recorded yet.</div>
     </div>
@@ -99,8 +93,6 @@
     return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
  
-  let myChildren = [];
- 
   async function init() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
@@ -109,47 +101,22 @@
       return;
     }
  
-    const { data: parentRows, error } = await supabaseClient.from('parents').select('*').eq('user_id', user.id);
+    const { data: student, error } = await supabaseClient.from('students').select('*').eq('user_id', user.id).maybeSingle();
  
     document.getElementById('loading').style.display = 'none';
  
-    if (error || !parentRows || !parentRows.length) {
+    if (error || !student) {
       document.getElementById('notLoggedIn').style.display = 'block';
       return;
     }
- 
-    const studentIds = parentRows.map(p => p.student_id);
-    const { data: students } = await supabaseClient.from('students').select('*').in('id', studentIds);
-    myChildren = students || [];
- 
-    if (!myChildren.length) {
-      document.getElementById('notLoggedIn').style.display = 'block';
-      return;
-    }
- 
-    if (myChildren.length > 1) {
-      document.getElementById('childSelectCard').style.display = 'block';
-      document.getElementById('childSelect').innerHTML = myChildren.map(c => '<option value="' + c.id + '">' + escapeHtml(c.name) + '</option>').join('');
-    }
- 
-    document.getElementById('content').style.display = 'block';
-    loadChild(myChildren[0].id);
-  }
- 
-  function onSelectChild() {
-    loadChild(document.getElementById('childSelect').value);
-  }
- 
-  function loadChild(studentId) {
-    const student = myChildren.find(c => String(c.id) === String(studentId));
-    if (!student) return;
  
     document.getElementById('studentName').textContent = student.name;
     document.getElementById('studentMeta').textContent = (student.class_name || '') + (student.admission_number ? ' · ' + student.admission_number : '');
     document.getElementById('attendance').textContent = student.attendance != null ? student.attendance + '%' : '—';
     document.getElementById('notes').textContent = student.notes || '—';
+    document.getElementById('content').style.display = 'block';
  
-    loadHistory(studentId);
+    await loadHistory(student.id);
   }
  
   async function loadHistory(studentId) {
@@ -199,3 +166,4 @@
  
 </body>
 </html>
+ 

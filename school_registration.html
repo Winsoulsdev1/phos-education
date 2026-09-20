@@ -3,32 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PHOS AI Education — School Registration</title>
+<title>SchoolOS — School Registration</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #E9EDE4; margin: 0; padding: 20px; }
-  .card { max-width: 480px; margin: 40px auto 0; background: #FBFAF5; border: 1px solid #D8D2BE; padding: 24px; border-radius: 4px; }
-  h1 { font-size: 20px; color: #1F4E5F; margin-top: 0; }
-  label { display: block; font-size: 13px; margin: 14px 0 4px; color: #1B2A3F; }
-  input { width: 100%; padding: 8px; border: 1px solid #C9C2A8; border-radius: 3px; font-size: 14px; box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EFF3FF; margin: 0; padding: 20px; }
+  .card { max-width: 480px; margin: 40px auto 0; background: #FFFFFF; border: 1px solid #DCE6FA; padding: 24px; border-radius: 4px; }
+  h1 { font-size: 20px; color: #2D6CDF; margin-top: 0; }
+  label { display: block; font-size: 13px; margin: 14px 0 4px; color: #1E293B; }
+  input { width: 100%; padding: 8px; border: 1px solid #DCE6FA; border-radius: 3px; font-size: 14px; box-sizing: border-box; }
  
   .password-wrap { position: relative; }
   .password-wrap input { padding-right: 60px; }
   .toggle-eye {
     position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-    background: none; border: none; color: #1F4E5F; font-size: 12px; cursor: pointer;
+    background: none; border: none; color: #2D6CDF; font-size: 12px; cursor: pointer;
     padding: 4px 6px;
   }
  
-  button.primary { margin-top: 20px; width: 100%; padding: 10px; background: #1F4E5F; color: white; border: none; border-radius: 3px; font-size: 15px; cursor: pointer; }
+  button.primary { margin-top: 20px; width: 100%; padding: 10px; background: #2D6CDF; color: white; border: none; border-radius: 3px; font-size: 15px; cursor: pointer; }
   button.primary:disabled { opacity: 0.6; }
  
-  .switch-note { margin-top: 14px; font-size: 13px; text-align: center; color: #4A5A6B; }
-  .switch-note a { color: #1F4E5F; }
+  .switch-note { margin-top: 14px; font-size: 13px; text-align: center; color: #64748B; }
+  .switch-note a { color: #2D6CDF; }
  
   #message { margin-top: 14px; font-size: 13px; padding: 10px; border-radius: 3px; display: none; }
-  #message.success { background: #E1EBEA; color: #1F4E5F; display: block; }
-  #message.error { background: #F3E4E3; color: #A3273A; display: block; }
+  #message.success { background: #E3EEFF; color: #2D6CDF; display: block; }
+  #message.error { background: #FDE8E8; color: #EF4444; display: block; }
 </style>
 </head>
 <body>

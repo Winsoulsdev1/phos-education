@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PHOS AI Education — Student Profile</title>
+<title>SchoolOS — Student Profile</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #16283A; --ink-soft: #5B6B7A; --sidebar-color: #17414F; --teal-tint: #E7EFEE;
-    --gold: #B0822B; --sage: #4C7A63; --sage-tint: #E7F0EA;
-    --red: #9C2C3C; --red-tint: #F5E4E4; --paper: #FDFBF6; --page-bg: #EEF0E9; --border: #E3DCC6;
+    --ink: #1E293B; --ink-soft: #64748B; --sidebar-color: #2D6CDF; --teal-tint: #E3EEFF;
+    --gold: #FFB020; --sage: #22A06B; --sage-tint: #E1F8ED;
+    --red: #EF4444; --red-tint: #FDE8E8; --paper: #FFFFFF; --page-bg: #EFF3FF; --border: #DCE6FA;
   }
   * { box-sizing: border-box; }
   body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 14px; line-height: 1.5; }
@@ -55,6 +55,10 @@
   }
   .quick-nav a:hover { background: var(--teal-tint); }
   #parentMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  .toggle-eye {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--sidebar-color); font-size: 12px; cursor: pointer; padding: 4px 6px;
+  }
   #parentMsg.success { background: var(--sage-tint); color: #2E4F41; display: block; }
   #parentMsg.error, #studentLoginMsg.error { background: var(--red-tint); color: #6E1F2A; display: block; }
   #studentLoginMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
@@ -74,7 +78,7 @@
  
 <div class="app">
   <div class="sidebar no-print">
-    <div class="brand">PHOS AI Education</div>
+    <div class="brand">SchoolOS</div>
     <a class="nav-item" href="teacher-dashboard.html">Dashboard</a>
     <a class="nav-item active" href="students.html">Students</a>
     <a class="nav-item" href="assessments.html">Assessments</a>
@@ -129,7 +133,10 @@
           <label style="display:block;font-size:13px;margin:8px 0 4px;">Phone (optional)</label>
           <input type="text" id="p_phone" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
           <label style="display:block;font-size:13px;margin:8px 0 4px;">Temporary password <span style="font-weight:400;color:var(--ink-soft);">(only needed if this parent doesn't already have an account here)</span></label>
-          <input type="password" id="p_password" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+          <div style="position:relative;">
+            <input type="password" id="p_password" style="width:100%;padding:8px;padding-right:60px;border:1px solid var(--border);border-radius:4px;">
+            <button type="button" class="toggle-eye" onclick="toggleEye('p_password', this)">Show</button>
+          </div>
           <div style="margin-top:12px;"><button class="btn-outline" id="addParentBtn" onclick="addParent()">Add Parent</button></div>
           <div id="parentMsg"></div>
         </div>
@@ -142,7 +149,10 @@
           <label style="display:block;font-size:13px;margin:8px 0 4px;">Email</label>
           <input type="text" id="sl_email" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
           <label style="display:block;font-size:13px;margin:8px 0 4px;">Temporary password</label>
-          <input type="password" id="sl_password" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;">
+          <div style="position:relative;">
+            <input type="password" id="sl_password" style="width:100%;padding:8px;padding-right:60px;border:1px solid var(--border);border-radius:4px;">
+            <button type="button" class="toggle-eye" onclick="toggleEye('sl_password', this)">Show</button>
+          </div>
           <div style="margin-top:12px;"><button class="btn-outline" id="createStudentLoginBtn" onclick="createStudentLogin()">Create Student Login</button></div>
           <div id="studentLoginMsg"></div>
         </div>
@@ -152,7 +162,7 @@
 </div>
  
 <script>
-  const SUPABASE_URL = "https://rodbwktwbjynjsupfsvn.supabase.co";
+  const SUPABASE_URL = "https://qfjsgcyppbqilzfhkknj.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  
@@ -333,6 +343,12 @@
     ).join('');
   }
  
+  function toggleEye(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
+    else { input.type = 'password'; btn.textContent = 'Show'; }
+  }
+ 
   async function addParent() {
     const name = document.getElementById('p_name').value.trim();
     const email = document.getElementById('p_email').value.trim();
@@ -444,17 +460,17 @@
  
 <style>
   .fab-badge {
-    position: absolute; top: -4px; right: -4px; background: var(--red, #9C2C3C); color: #FBFAF5;
+    position: absolute; top: -4px; right: -4px; background: var(--red, #EF4444); color: #FBFAF5;
     font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center; padding: 0 5px;
-    box-shadow: 0 0 0 2px var(--paper, #FDFBF6);
+    box-shadow: 0 0 0 2px var(--paper, #FFFFFF);
   }
   .fab-badge.hidden { display: none; }
   .fab-wrap { position: fixed; right: 22px; bottom: 26px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; }
   .fab-main {
     position: relative;
     width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
-    background: radial-gradient(circle at 30% 30%, #E0A94A, #B0822B);
+    background: radial-gradient(circle at 30% 30%, #FFC24D, #FFB020);
     color: #FBFAF5; font-size: 26px; box-shadow: 0 4px 14px rgba(176,130,43,0.45);
     display: flex; align-items: center; justify-content: center;
     animation: fab-breathe 2.6s ease-in-out infinite;
@@ -470,7 +486,7 @@
   .fab-menu { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-bottom: 14px; }
   .fab-item {
     display: flex; align-items: center; gap: 10px; text-decoration: none;
-    background: var(--sidebar-color, #17414F); color: #FBFAF5; padding: 9px 16px 9px 9px;
+    background: var(--sidebar-color, #2D6CDF); color: #FBFAF5; padding: 9px 16px 9px 9px;
     border-radius: 30px; box-shadow: 0 3px 10px rgba(22,40,58,0.28); font-size: 13px; font-weight: 500;
     opacity: 0; transform: translateY(14px) scale(0.7); pointer-events: none;
     transition: opacity 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
