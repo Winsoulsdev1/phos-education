@@ -113,7 +113,7 @@
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  
   const supabaseAdminAction = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false }
+    auth: { persistSession: false, autoRefreshToken: false, storageKey: 'schoolos-isolated-action' }
   });
  
   let currentSchool = null;
@@ -144,9 +144,14 @@
  
     document.getElementById('loading').style.display = 'none';
  
-    if (error || !data) {
+    if (error) {
       document.getElementById('notLoggedIn').style.display = 'block';
-      document.getElementById('notLoggedIn').textContent = 'This page is for school admins only.';
+      document.getElementById('notLoggedIn').innerHTML = 'Could not load your school: ' + error.message + ' <a href="login.html">Go to login</a>';
+      return;
+    }
+    if (!data) {
+      document.getElementById('notLoggedIn').style.display = 'block';
+      document.getElementById('notLoggedIn').innerHTML = 'Logged in, but this login isn\'t linked to a school admin account. <a href="login.html">Go to login</a>';
       return;
     }
  

@@ -169,7 +169,7 @@
   // Separate, non-session-persisting client used only for creating parent
   // logins — so adding a parent never logs the current admin/teacher out.
   const supabaseAdminAction = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false }
+    auth: { persistSession: false, autoRefreshToken: false, storageKey: 'schoolos-isolated-action' }
   });
  
   const bands = [

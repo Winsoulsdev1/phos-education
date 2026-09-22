@@ -3,119 +3,159 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SchoolOS — Admin Dashboard</title>
+<title>SchoolOS — Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #1E293B; --ink-soft: #64748B; --sidebar-color: #2D6CDF; --teal-tint: #E3EEFF;
-    --gold: #FFB020; --sage: #22A06B; --sage-tint: #E1F8ED;
-    --red: #EF4444; --red-tint: #FDE8E8; --paper: #FFFFFF; --page-bg: #EFF3FF; --border: #DCE6FA;
+    --ink: #1E293B; --ink-soft: #64748B; --brand: #2D6CDF; --teal-tint: #E3EEFF;
+    --gold: #FFB020; --gold-tint: #FFF4DA; --sage: #22A06B; --sage-tint: #E1F8ED;
+    --red: #EF4444; --red-tint: #FDE8E8; --plum: #8B5CF6; --plum-tint: #F1EBFE;
+    --paper: #FFFFFF; --page-bg: #EFF3FF; --border: #DCE6FA;
   }
   * { box-sizing: border-box; }
   body { font-family: "Inter", -apple-system, sans-serif; margin: 0; background: var(--page-bg); color: var(--ink); font-size: 13.5px; line-height: 1.5; }
-  .app { display: flex; min-height: 100vh; }
-  .sidebar { width: 210px; background: var(--sidebar-color); color: #E6EEFF; flex-shrink: 0; padding: 18px 0; }
-  .brand { font-weight: 700; font-size: 14px; color: #FFFFFF; padding: 0 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.15); margin-bottom: 8px; letter-spacing: 0.2px; }
-  .nav-item { display: block; padding: 10px 20px; font-size: 13px; color: #D6E3FF; text-decoration: none; border-left: 3px solid transparent; }
-  .nav-item:hover { background: rgba(255,255,255,0.08); }
-  .nav-item.active { background: rgba(255,255,255,0.12); border-left-color: var(--gold); color: #FFFFFF; font-weight: 600; }
-  .logout-item { display: block; padding: 10px 20px; font-size: 12.5px; color: #FFD1D1; cursor: pointer; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.15); }
  
-  .main { flex: 1; padding: 36px 40px; max-width: 720px; }
-  .card { background: var(--paper); border-radius: 8px; padding: 24px 26px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(30,41,59,0.06); border: 1px solid var(--border); }
-  h1 { font-weight: 700; font-size: 20px; margin: 0 0 3px; }
-  .subhead { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
+  .topbar { background: var(--brand); padding: 14px 18px 0; }
+  .brand-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .brand { color: #FFFFFF; font-weight: 700; font-size: 15px; }
+  .logout-btn { background: rgba(255,255,255,0.15); border: none; color: #FFFFFF; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+ 
+  .tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 0; }
+  .tab-btn {
+    background: none; border: none; color: #D6E3FF; padding: 10px 14px; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent;
+  }
+  .tab-btn.active { color: #FFFFFF; border-bottom-color: var(--gold); }
+ 
+  .main { max-width: 760px; margin: 0 auto; padding: 24px 18px 100px; }
+  .tab-section { display: none; }
+  .tab-section.active { display: block; }
+ 
+  .card { background: var(--paper); border-radius: 8px; padding: 22px 24px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(30,41,59,0.06); border: 1px solid var(--border); }
+  h1 { font-weight: 700; font-size: 19px; margin: 0 0 4px; }
+  .subhead { font-size: 12px; color: var(--ink-soft); margin-bottom: 16px; }
+  .section-title { font-weight: 600; font-size: 14px; color: var(--brand); margin: 0 0 12px; }
  
   .clock-card { display: flex; justify-content: space-between; align-items: center; }
-  .clock-date { font-weight: 700; font-size: 17px; }
-  .clock-time { font-size: 26px; font-weight: 700; color: var(--sidebar-color); font-variant-numeric: tabular-nums; }
+  .clock-date { font-weight: 700; font-size: 16px; }
+  .clock-time { font-size: 24px; font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
  
-  .stat-strip { display: flex; gap: 14px; margin-bottom: 20px; }
-  .stat-box { flex: 1; background: var(--paper); border-radius: 8px; padding: 16px 18px; border-left: 4px solid var(--sidebar-color); box-shadow: 0 1px 3px rgba(30,41,59,0.06); }
+  .stat-strip { display: flex; gap: 12px; margin-bottom: 18px; }
+  .stat-box { flex: 1; background: var(--paper); border-radius: 8px; padding: 14px 16px; border-left: 4px solid var(--brand); box-shadow: 0 1px 3px rgba(30,41,59,0.06); }
   .stat-box.gold { border-left-color: var(--gold); }
   .stat-box.sage { border-left-color: var(--sage); }
-  .stat-box .num { font-weight: 700; font-size: 26px; line-height: 1; }
-  .stat-box .lbl { font-size: 12px; color: var(--ink-soft); margin-top: 6px; }
+  .stat-num { font-weight: 700; font-size: 22px; line-height: 1; }
+  .stat-lbl { font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
  
-  .field-grid { display: grid; grid-template-columns: 110px 1fr; row-gap: 12px; font-size: 14px; }
-  .field-grid strong { color: var(--ink-soft); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.4px; }
-  label { display: block; font-size: 13px; margin: 12px 0 4px; }
-  input, textarea { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-family: inherit; }
-  textarea { resize: vertical; min-height: 100px; }
-  .row { display: flex; gap: 10px; margin-top: 18px; }
-  button.btn-primary { background: var(--sidebar-color); color: var(--paper); border: none; padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
-  button.btn-outline { background: none; border: 1px solid var(--sidebar-color); color: var(--sidebar-color); padding: 9px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
-  #editMsg, #notesMsg { margin-top: 12px; font-size: 13px; padding: 8px 10px; border-radius: 4px; display: none; }
-  #editMsg.success, #notesMsg.success { background: var(--sage-tint); color: #1B5E43; display: block; }
-  #editMsg.error, #notesMsg.error { background: var(--red-tint); color: #8B1F1F; display: block; }
+  label { display: block; font-size: 13px; margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 9px; border: 1px solid var(--border); border-radius: 5px; font-size: 14px; font-family: inherit; background: #FFFEFE; }
+  textarea { resize: vertical; min-height: 90px; }
+  .row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  button.btn-primary { background: var(--brand); color: #FFFFFF; border: none; padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  button.btn-outline { background: none; border: 1px solid var(--brand); color: var(--brand); padding: 9px 16px; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  td button.btn-outline { padding: 5px 9px; font-size: 11.5px; }
+ 
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; padding: 8px 6px; border-bottom: 2px solid var(--brand); color: var(--ink-soft); font-size: 10.5px; text-transform: uppercase; }
+  td { padding: 9px 6px; border-bottom: 1px solid #EEF1FB; vertical-align: top; }
+  .name-cell a { color: var(--ink); font-weight: 600; text-decoration: none; }
+  .name-cell a:hover { text-decoration: underline; color: var(--brand); }
+ 
+  .tag { font-size: 11px; padding: 3px 10px; border-radius: 12px; display: inline-block; }
+  .tag.strength { background: var(--sage-tint); color: #1B5E43; }
+  .tag.attention { background: var(--red-tint); color: #8B1F1F; }
+  .tag.neutral { background: var(--teal-tint); color: var(--brand); }
+ 
+  .warning-row, .pattern-row, .ask-result-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #EEF1FB; font-size: 13px; }
+  .warning-row:last-child, .pattern-row:last-child, .ask-result-row:last-child { border-bottom: none; }
+  .pattern-count { font-weight: 700; color: var(--red); min-width: 22px; }
+  .pattern-count.low { color: var(--ink-soft); font-weight: 400; }
+  .ask-result-row .val { font-weight: 700; color: var(--red); }
+  .warning-detail { color: var(--ink-soft); font-size: 12px; }
+ 
+  .swatch-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .swatch { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
+  .swatch.selected { border-color: var(--ink); }
+ 
+  #msg, #teacherMsg, #themeMsg, #pwMsg, #editMsg, #notesMsg { margin-top: 10px; font-size: 13px; padding: 8px 10px; border-radius: 5px; display: none; }
+  #msg.success, #teacherMsg.success, #themeMsg.success, #pwMsg.success, #editMsg.success, #notesMsg.success { background: var(--sage-tint); color: #1B5E43; display: block; }
+  #msg.error, #teacherMsg.error, #pwMsg.error, #editMsg.error, #notesMsg.error { background: var(--red-tint); color: #8B1F1F; display: block; }
+ 
+  .password-wrap { position: relative; }
+  .password-wrap input { padding-right: 60px; }
+  .toggle-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--brand); font-size: 12px; cursor: pointer; padding: 4px 6px; }
+ 
   .hidden { display: none; }
-  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 0; }
+  .empty-note { font-size: 13px; color: var(--ink-soft); font-style: italic; padding: 8px 0; }
+  #loading, #notLoggedIn { text-align: center; color: var(--ink-soft); padding: 60px 20px; }
+ 
+  @keyframes target-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,176,32,0.55); }
+    70% { box-shadow: 0 0 0 14px rgba(255,176,32,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,176,32,0); }
+  }
+  .fab-target-highlight { animation: target-pulse 1.1s ease-out 2; }
 </style>
 </head>
 <body>
  
-<div class="app">
-  <div class="sidebar" id="sidebarEl">
-    <div class="brand">SchoolOS</div>
-    <a class="nav-item active" href="dashboard.html">Dashboard</a>
-    <a class="nav-item" href="teachers.html">Teachers</a>
-    <a class="nav-item" href="all-students.html">Students</a>
-    <a class="nav-item" href="school-overview.html">School Overview</a>
-    <a class="nav-item" href="settings.html">Settings</a>
-    <div class="logout-item" onclick="logout()">Log Out</div>
+<div id="loading">Loading…</div>
+<div id="notLoggedIn" style="display:none;" class="main"><div class="card">You're not logged in. <a href="login.html">Go to login</a></div></div>
+ 
+<div id="content" style="display:none;">
+ 
+  <div class="topbar" id="topbarEl">
+    <div class="brand-row">
+      <div class="brand">SchoolOS</div>
+      <button class="logout-btn" onclick="logout()">Log Out</button>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="dash">Dashboard</button>
+      <button class="tab-btn" data-tab="teachers">Teachers</button>
+      <button class="tab-btn" data-tab="students">Students</button>
+      <button class="tab-btn" data-tab="overview">School Overview</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+    </div>
   </div>
  
   <div class="main">
-    <div id="loading">Loading your school…</div>
-    <div id="notLoggedIn" style="display:none;" class="card">
-      You're not logged in. <a href="login.html">Go to login</a>
-    </div>
  
-    <div id="content" style="display:none;">
- 
+    <!-- DASHBOARD TAB -->
+    <div class="tab-section active" id="tab-dash">
       <div class="card clock-card">
-        <div>
-          <div class="clock-date" id="clockDate"></div>
-          <div class="subhead" id="schoolLabel" style="margin:2px 0 0;"></div>
-        </div>
+        <div><div class="clock-date" id="clockDate"></div><div class="subhead" id="schoolLabel" style="margin:2px 0 0;"></div></div>
         <div class="clock-time" id="clockTime"></div>
       </div>
  
       <div class="stat-strip">
-        <div class="stat-box gold"><div class="num" id="statStudents">0</div><div class="lbl">Students</div></div>
-        <div class="stat-box"><div class="num" id="statTeachers">0</div><div class="lbl">Teachers</div></div>
-        <div class="stat-box sage"><div class="num" id="statClasses">0</div><div class="lbl">Classes</div></div>
+        <div class="stat-box gold"><div class="stat-num" id="statStudents">0</div><div class="stat-lbl">Students</div></div>
+        <div class="stat-box"><div class="stat-num" id="statTeachers">0</div><div class="stat-lbl">Teachers</div></div>
+        <div class="stat-box sage"><div class="stat-num" id="statClasses">0</div><div class="stat-lbl">Classes</div></div>
       </div>
  
-      <div class="card" id="viewMode">
+      <div class="card" id="schoolViewMode">
         <h1 id="schoolName"></h1>
         <div class="subhead">Your school's details</div>
-        <div class="field-grid">
-          <strong>Address</strong><span id="schoolAddress"></span>
-          <strong>Contact email</strong><span id="schoolEmail"></span>
-          <strong>Contact phone</strong><span id="schoolPhone"></span>
+        <div style="display:grid;grid-template-columns:110px 1fr;row-gap:10px;font-size:14px;">
+          <strong style="color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;">Address</strong><span id="schoolAddress"></span>
+          <strong style="color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;">Email</strong><span id="schoolEmail"></span>
+          <strong style="color:var(--ink-soft);font-size:11.5px;text-transform:uppercase;">Phone</strong><span id="schoolPhone"></span>
         </div>
-        <div class="row">
-          <button class="btn-outline" onclick="startEdit()">Edit School Info</button>
-        </div>
+        <div class="row"><button class="btn-outline" onclick="startEditSchool()">Edit School Info</button></div>
       </div>
  
-      <div class="card hidden" id="editModeBox">
+      <div class="card hidden" id="schoolEditMode">
         <h1>Edit School Info</h1>
-        <label>School name</label>
-        <input id="edit_name">
-        <label>Address</label>
-        <input id="edit_address">
-        <label>Contact email</label>
-        <input id="edit_contact_email">
-        <label>Contact phone</label>
-        <input id="edit_contact_phone">
+        <label>School name</label><input id="edit_name">
+        <label>Address</label><input id="edit_address">
+        <label>Contact email</label><input id="edit_contact_email">
+        <label>Contact phone</label><input id="edit_contact_phone">
         <div class="row">
-          <button class="btn-primary" onclick="saveEdit()">Save Changes</button>
-          <button class="btn-outline" onclick="cancelEdit()">Cancel</button>
+          <button class="btn-primary" onclick="saveSchoolEdit()">Save Changes</button>
+          <button class="btn-outline" onclick="cancelSchoolEdit()">Cancel</button>
         </div>
         <div id="editMsg"></div>
       </div>
@@ -123,20 +163,199 @@
       <div class="card">
         <h1>Notes / To-Do</h1>
         <div class="subhead">A private scratchpad only you can see — saves automatically</div>
-        <textarea id="adminNotes" placeholder="e.g. Call Mrs. Idy about Term 2 dates..." onblur="saveNotes()"></textarea>
+        <textarea id="adminNotes" onblur="saveNotes()"></textarea>
         <div id="notesMsg"></div>
       </div>
- 
     </div>
+ 
+    <!-- TEACHERS TAB -->
+    <div class="tab-section" id="tab-teachers">
+      <div class="card">
+        <h1>Teachers</h1>
+        <table><thead><tr><th>Name</th><th>Email</th><th>Subjects</th></tr></thead><tbody id="teacherRows"></tbody></table>
+        <div id="teacherEmptyNote" class="empty-note hidden">No teachers added yet.</div>
+      </div>
+ 
+      <div class="card" id="add-teacher">
+        <h1>Add a Teacher</h1>
+        <label>Teacher's name</label><input id="t_name" placeholder="e.g. Mrs. Adebayo">
+        <label>Email</label><input id="t_email" placeholder="teacher@school.com">
+        <label>Phone</label><input id="t_phone" placeholder="Optional">
+        <label>Subject(s)</label><input id="t_subject" placeholder="e.g. Mathematics, Physics">
+        <label>Class taught</label><input id="t_class" placeholder="e.g. JSS1">
+        <label>Temporary password</label>
+        <div class="password-wrap">
+          <input id="t_password" type="password" placeholder="Give this to the teacher">
+          <button type="button" class="toggle-eye" onclick="toggleEye('t_password', this)">Show</button>
+        </div>
+        <button class="btn-primary" style="margin-top:14px;" onclick="addTeacher()">Add Teacher</button>
+        <div id="teacherMsg"></div>
+      </div>
+    </div>
+ 
+    <!-- STUDENTS TAB -->
+    <div class="tab-section" id="tab-students">
+      <div class="card">
+        <h1>All Students</h1>
+        <div class="row" style="margin-top:0;margin-bottom:14px;">
+          <input type="text" id="studentSearch" placeholder="Search by name…" oninput="renderStudentsTab()" style="flex:1;">
+          <select id="studentClassFilter" onchange="renderStudentsTab()" style="max-width:160px;"></select>
+        </div>
+        <table><thead><tr><th>Name</th><th>Class</th><th>Admission No.</th><th>Attendance</th></tr></thead><tbody id="studentRows"></tbody></table>
+        <div id="studentEmptyNote" class="empty-note hidden">No students found.</div>
+      </div>
+    </div>
+ 
+    <!-- SCHOOL OVERVIEW TAB -->
+    <div class="tab-section" id="tab-overview">
+      <div class="card">
+        <div class="section-title">Classes at a Glance</div>
+        <table><thead><tr><th>Class</th><th>Teacher(s)</th><th>Students</th><th>Latest</th><th>Performance</th></tr></thead><tbody id="classRows"></tbody></table>
+        <div id="classEmptyNote" class="empty-note hidden">No classes found yet.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Teacher Activity</div>
+        <table><thead><tr><th>Teacher</th><th>Class</th><th>Assessments</th><th>Last Activity</th></tr></thead><tbody id="activityRows"></tbody></table>
+      </div>
+      <div class="card">
+        <div class="section-title">School-Wide Early Warning</div>
+        <div id="warningRows"></div>
+        <div id="warningEmptyNote" class="empty-note hidden">No students currently show a declining trend.</div>
+      </div>
+      <div class="card">
+        <div class="section-title">Ask About a Topic</div>
+        <select id="askTopicSelect" onchange="askWhoNeedsHelp()"></select>
+        <div id="askResults"></div>
+      </div>
+    </div>
+ 
+    <!-- SETTINGS TAB -->
+    <div class="tab-section" id="tab-settings">
+      <div class="card">
+        <h1>Sidebar / Brand Color</h1>
+        <div class="subhead">Pick an accent color for your account</div>
+        <div class="swatch-row" id="swatchRow"></div>
+        <div id="themeMsg"></div>
+      </div>
+      <div class="card">
+        <h1>Change Password</h1>
+        <label>New password</label>
+        <div class="password-wrap">
+          <input type="password" id="newPassword" placeholder="At least 6 characters">
+          <button type="button" class="toggle-eye" onclick="toggleEye('newPassword', this)">Show</button>
+        </div>
+        <div class="row"><button class="btn-primary" onclick="changePassword()">Update Password</button></div>
+        <div id="pwMsg"></div>
+      </div>
+    </div>
+ 
   </div>
 </div>
  
 <script>
   const SUPABASE_URL = "https://qfjsgcyppbqilzfhkknj.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZGJ3a3R3Ymp5bmpzdXBmc3ZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2MDU1MTgsImV4cCI6MjEwNDE4MTUxOH0.K7C4k7FyN0hlniV51r6JQbzs_OObHFqXaShOxz6iGLs";
+ 
+  // Main client — the admin's real session.
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
  
+  // Separate client, its OWN storage slot, used only for creating teacher
+  // logins. Giving it a distinct storageKey (not just persistSession:false)
+  // stops it from ever colliding with the main session — this is the fix
+  // for the "Multiple GoTrueClient instances" warning and the login bug it caused.
+  const supabaseAdminAction = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, storageKey: 'schoolos-admin-action' }
+  });
+ 
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function toggleEye(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
+    else { input.type = 'password'; btn.textContent = 'Show'; }
+  }
+  function subjectTags(s) { return s ? s.split(',').map(x => x.trim()).filter(Boolean).join(', ') : '—'; }
+ 
+  const bands = [
+    { label: 'Excellent', min: 70, concern: false }, { label: 'Very Good', min: 60, concern: false },
+    { label: 'Good', min: 50, concern: false }, { label: 'Fair', min: 40, concern: true }, { label: 'Needs Attention', min: 0, concern: true }
+  ];
+  function getBand(score) {
+    const sorted = bands.slice().sort((a, b) => b.min - a.min);
+    for (const b of sorted) if (score >= b.min) return b;
+    return sorted[sorted.length - 1];
+  }
+  function avgFromScores(rows, topics) {
+    const vals = rows.filter(r => topics.includes(r.topic)).map(r => r.score).filter(v => v != null);
+    if (!vals.length) return null;
+    return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  }
+ 
   let currentSchool = null;
+  let allTeachers = [], allStudents = [], allAssessments = [], allScores = [];
+ 
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateTab(btn.getAttribute('data-tab')));
+  });
+  function activateTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === name));
+    document.querySelectorAll('.tab-section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+ 
+  // Hash-based deep links from the FAB, e.g. dashboard.html#add-teacher
+  const HASH_TO_TAB = { 'dash': 'dash', 'add-teacher': 'teachers', 'teachers': 'teachers', 'students': 'students', 'overview': 'overview', 'settings': 'settings' };
+  function handleHash() {
+    const hash = window.location.hash.replace('#', '');
+    if (!hash) return;
+    const tab = HASH_TO_TAB[hash] || 'dash';
+    activateTab(tab);
+    const el = document.getElementById(hash);
+    if (el) setTimeout(() => { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('fab-target-highlight'); }, 250);
+  }
+ 
+  // ---------- Init ----------
+  async function init() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) { document.getElementById('loading').style.display = 'none'; document.getElementById('notLoggedIn').style.display = 'block'; return; }
+ 
+    const { data, error } = await supabaseClient.from('schools').select('*').eq('admin_user_id', user.id).maybeSingle();
+    document.getElementById('loading').style.display = 'none';
+ 
+    if (error) { document.getElementById('notLoggedIn').style.display = 'block'; document.getElementById('notLoggedIn').textContent = 'Could not load your school: ' + error.message; return; }
+    if (!data) { document.getElementById('notLoggedIn').style.display = 'block'; document.getElementById('notLoggedIn').innerHTML = 'Logged in, but this login isn\'t linked to a school admin account. <a href="login.html">Go to login</a>'; return; }
+ 
+    currentSchool = data;
+    if (data.theme_color) document.getElementById('topbarEl').style.background = data.theme_color;
+    document.getElementById('schoolLabel').textContent = data.name;
+    document.getElementById('adminNotes').value = data.admin_notes || '';
+    renderSchoolView();
+    document.getElementById('content').style.display = 'block';
+ 
+    updateClock(); setInterval(updateClock, 1000);
+ 
+    await loadAllData();
+    renderDashboardStats();
+    renderTeachersTab();
+    renderStudentsTab();
+    renderOverviewTab();
+    renderSettingsTab();
+ 
+    handleHash();
+  }
+  window.addEventListener('hashchange', handleHash);
+ 
+  async function loadAllData() {
+    const [{ data: teachers }, { data: students }, { data: assessments }, { data: scores }] = await Promise.all([
+      supabaseClient.from('teachers').select('*').eq('school_id', currentSchool.id),
+      supabaseClient.from('students').select('*').eq('school_id', currentSchool.id),
+      supabaseClient.from('assessments').select('*').eq('school_id', currentSchool.id),
+      supabaseClient.from('scores').select('*').eq('school_id', currentSchool.id)
+    ]);
+    allTeachers = teachers || []; allStudents = students || []; allAssessments = assessments || []; allScores = scores || [];
+  }
  
   function updateClock() {
     const now = new Date();
@@ -144,125 +363,233 @@
     document.getElementById('clockTime').textContent = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
  
-  async function loadDashboard() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) {
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('notLoggedIn').style.display = 'block';
-      return;
-    }
- 
-    const { data, error } = await supabaseClient
-      .from('schools').select('*').eq('admin_user_id', user.id).maybeSingle();
- 
-    document.getElementById('loading').style.display = 'none';
- 
-    if (error) {
-      document.getElementById('notLoggedIn').style.display = 'block';
-      document.getElementById('notLoggedIn').textContent = 'Could not load your school: ' + error.message;
-      return;
-    }
-    if (!data) {
-      document.getElementById('notLoggedIn').style.display = 'block';
-      document.getElementById('notLoggedIn').innerHTML = 'Logged in, but this login isn\'t linked to a school admin account. <a href="login.html">Go to login</a>';
-      return;
-    }
- 
-    currentSchool = data;
-    if (data.theme_color) document.getElementById('sidebarEl').style.background = data.theme_color;
-    document.getElementById('schoolLabel').textContent = data.name;
-    document.getElementById('adminNotes').value = data.admin_notes || '';
-    renderView();
-    document.getElementById('content').style.display = 'block';
- 
-    updateClock();
-    setInterval(updateClock, 1000);
-    loadStats();
+  function classNamesList() {
+    return [...new Set(allTeachers.map(t => t.class_name).concat(allStudents.map(s => s.class_name)).filter(Boolean))];
   }
  
-  function renderView() {
+  function renderDashboardStats() {
+    document.getElementById('statStudents').textContent = allStudents.length;
+    document.getElementById('statTeachers').textContent = allTeachers.length;
+    document.getElementById('statClasses').textContent = classNamesList().length;
+  }
+ 
+  // ---------- Dashboard tab: school info + notes ----------
+  function renderSchoolView() {
     document.getElementById('schoolName').textContent = currentSchool.name;
     document.getElementById('schoolAddress').textContent = currentSchool.address || '—';
     document.getElementById('schoolEmail').textContent = currentSchool.contact_email || '—';
     document.getElementById('schoolPhone').textContent = currentSchool.contact_phone || '—';
   }
- 
-  async function loadStats() {
-    const [{ data: students }, { data: teachers }] = await Promise.all([
-      supabaseClient.from('students').select('class_name').eq('school_id', currentSchool.id),
-      supabaseClient.from('teachers').select('class_name').eq('school_id', currentSchool.id)
-    ]);
-    const classNames = new Set();
-    (students || []).forEach(s => { if (s.class_name) classNames.add(s.class_name); });
-    (teachers || []).forEach(t => { if (t.class_name) classNames.add(t.class_name); });
- 
-    document.getElementById('statStudents').textContent = (students || []).length;
-    document.getElementById('statTeachers').textContent = (teachers || []).length;
-    document.getElementById('statClasses').textContent = classNames.size;
-  }
- 
-  function startEdit() {
+  function startEditSchool() {
     document.getElementById('edit_name').value = currentSchool.name || '';
     document.getElementById('edit_address').value = currentSchool.address || '';
     document.getElementById('edit_contact_email').value = currentSchool.contact_email || '';
     document.getElementById('edit_contact_phone').value = currentSchool.contact_phone || '';
-    document.getElementById('viewMode').classList.add('hidden');
-    document.getElementById('editModeBox').classList.remove('hidden');
+    document.getElementById('schoolViewMode').classList.add('hidden');
+    document.getElementById('schoolEditMode').classList.remove('hidden');
   }
- 
-  function cancelEdit() {
-    document.getElementById('viewMode').classList.remove('hidden');
-    document.getElementById('editModeBox').classList.add('hidden');
+  function cancelSchoolEdit() {
+    document.getElementById('schoolViewMode').classList.remove('hidden');
+    document.getElementById('schoolEditMode').classList.add('hidden');
     document.getElementById('editMsg').style.display = 'none';
   }
- 
-  async function saveEdit() {
+  async function saveSchoolEdit() {
     const name = document.getElementById('edit_name').value.trim();
     const address = document.getElementById('edit_address').value.trim();
     const contact_email = document.getElementById('edit_contact_email').value.trim();
     const contact_phone = document.getElementById('edit_contact_phone').value.trim();
     const msg = document.getElementById('editMsg');
+    if (!name || !contact_email) { msg.className = 'error'; msg.textContent = 'School name and contact email are required.'; return; }
  
-    if (!name || !contact_email) {
-      msg.className = 'error';
-      msg.textContent = 'School name and contact email are required.';
-      return;
-    }
- 
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const { error } = await supabaseClient
-      .from('schools')
-      .update({ name, address, contact_email, contact_phone })
-      .eq('admin_user_id', user.id);
- 
-    if (error) {
-      msg.className = 'error';
-      msg.textContent = 'Error saving: ' + error.message;
-      return;
-    }
+    const { error } = await supabaseClient.from('schools').update({ name, address, contact_email, contact_phone }).eq('id', currentSchool.id);
+    if (error) { msg.className = 'error'; msg.textContent = 'Error saving: ' + error.message; return; }
  
     currentSchool = { ...currentSchool, name, address, contact_email, contact_phone };
     document.getElementById('schoolLabel').textContent = name;
-    renderView();
-    msg.className = 'success';
-    msg.textContent = 'Saved!';
-    setTimeout(cancelEdit, 800);
+    renderSchoolView();
+    msg.className = 'success'; msg.textContent = 'Saved!';
+    setTimeout(cancelSchoolEdit, 800);
   }
- 
   async function saveNotes() {
     const notes = document.getElementById('adminNotes').value;
     const msg = document.getElementById('notesMsg');
-    const { error } = await supabaseClient
-      .from('schools').update({ admin_notes: notes }).eq('id', currentSchool.id);
-    if (error) {
-      msg.className = 'error';
-      msg.textContent = 'Error saving notes: ' + error.message;
-      return;
-    }
+    const { error } = await supabaseClient.from('schools').update({ admin_notes: notes }).eq('id', currentSchool.id);
+    if (error) { msg.className = 'error'; msg.textContent = 'Error saving notes: ' + error.message; return; }
     currentSchool.admin_notes = notes;
-    msg.className = 'success';
-    msg.textContent = 'Saved.';
+    msg.className = 'success'; msg.textContent = 'Saved.';
     setTimeout(() => { msg.style.display = 'none'; }, 1500);
+  }
+ 
+  // ---------- Teachers tab ----------
+  function renderTeachersTab() {
+    const rows = document.getElementById('teacherRows');
+    const empty = document.getElementById('teacherEmptyNote');
+    if (!allTeachers.length) { rows.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    rows.innerHTML = allTeachers.map(t =>
+      '<tr><td>' + escapeHtml(t.name) + '</td><td>' + escapeHtml(t.email) + '</td><td>' + escapeHtml(subjectTags(t.subject)) + '</td></tr>'
+    ).join('');
+  }
+  async function addTeacher() {
+    const name = document.getElementById('t_name').value.trim();
+    const email = document.getElementById('t_email').value.trim();
+    const phone = document.getElementById('t_phone').value.trim();
+    const subject = document.getElementById('t_subject').value.trim();
+    const class_name = document.getElementById('t_class').value.trim();
+    const password = document.getElementById('t_password').value;
+    const msg = document.getElementById('teacherMsg');
+ 
+    if (!name || !email || !password) { msg.className = 'error'; msg.textContent = 'Name, email, and a temporary password are required.'; return; }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) { msg.className = 'error'; msg.textContent = 'Please enter a valid email address.'; return; }
+ 
+    const { data: authData, error: authError } = await supabaseAdminAction.auth.signUp({ email, password });
+    if (authError) { msg.className = 'error'; msg.textContent = 'Error creating login: ' + authError.message; return; }
+ 
+    const { error } = await supabaseClient.from('teachers').insert([{ school_id: currentSchool.id, user_id: authData.user.id, name, email, phone, subject, class_name }]);
+    if (error) { msg.className = 'error'; msg.textContent = 'Error saving teacher: ' + error.message; return; }
+ 
+    msg.className = 'success'; msg.textContent = 'Teacher added! Give them their email and temporary password to log in.';
+    document.getElementById('t_name').value = ''; document.getElementById('t_email').value = ''; document.getElementById('t_phone').value = '';
+    document.getElementById('t_subject').value = ''; document.getElementById('t_class').value = ''; document.getElementById('t_password').value = '';
+    await loadAllData();
+    renderTeachersTab(); renderDashboardStats(); renderOverviewTab();
+  }
+ 
+  // ---------- Students tab ----------
+  function renderStudentsTab() {
+    const classFilter = document.getElementById('studentClassFilter');
+    if (!classFilter.dataset.filled) {
+      const classNames = classNamesList().sort();
+      classFilter.innerHTML = '<option value="">All classes</option>' + classNames.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join('');
+      classFilter.dataset.filled = '1';
+    }
+    const search = (document.getElementById('studentSearch').value || '').toLowerCase();
+    const classVal = classFilter.value;
+    let list = allStudents.filter(s => s.name.toLowerCase().includes(search) && (!classVal || s.class_name === classVal));
+    list.sort((a, b) => a.name.localeCompare(b.name));
+ 
+    const rows = document.getElementById('studentRows');
+    const empty = document.getElementById('studentEmptyNote');
+    if (!list.length) { rows.innerHTML = ''; empty.classList.remove('hidden'); empty.textContent = allStudents.length ? 'No students match your search.' : 'No students found.'; return; }
+    empty.classList.add('hidden');
+    rows.innerHTML = list.map(s =>
+      '<tr><td class="name-cell"><a href="student-profile.html?id=' + s.id + '">' + escapeHtml(s.name) + '</a></td>' +
+      '<td>' + escapeHtml(s.class_name || '—') + '</td><td>' + escapeHtml(s.admission_number || '—') + '</td>' +
+      '<td>' + (s.attendance != null ? s.attendance + '%' : '—') + '</td></tr>'
+    ).join('');
+  }
+ 
+  // ---------- School Overview tab ----------
+  function renderOverviewTab() {
+    const classNames = classNamesList();
+ 
+    // Classes at a glance
+    const classRows = document.getElementById('classRows');
+    const classEmpty = document.getElementById('classEmptyNote');
+    if (!classNames.length) { classRows.innerHTML = ''; classEmpty.classList.remove('hidden'); }
+    else {
+      classEmpty.classList.add('hidden');
+      classRows.innerHTML = classNames.map(className => {
+        const classTeachers = allTeachers.filter(t => t.class_name === className).map(t => t.name);
+        const classStudents = allStudents.filter(s => s.class_name === className);
+        const classAssessments = allAssessments.filter(a => a.class_name === className).sort((a, b) => a.id - b.id);
+        const latest = classAssessments.length ? classAssessments[classAssessments.length - 1] : null;
+        let perf = '<span class="tag neutral">No assessments yet</span>', latestName = '—';
+        if (latest) {
+          latestName = escapeHtml(latest.name);
+          const rel = allScores.filter(r => r.assessment_id === latest.id);
+          if (rel.length) {
+            const vals = rel.map(r => r.score).filter(v => v != null);
+            const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+            const concern = rel.filter(r => r.score < 50).length;
+            if (avg !== null) perf = '<span class="tag ' + (avg >= 60 ? 'strength' : 'attention') + '">Avg ' + avg + (concern ? ' · ' + concern + ' low' : '') + '</span>';
+          } else perf = '<span class="tag neutral">No scores yet</span>';
+        }
+        return '<tr><td><strong>' + escapeHtml(className) + '</strong></td><td>' + (classTeachers.length ? escapeHtml(classTeachers.join(', ')) : '—') +
+          '</td><td>' + classStudents.length + '</td><td>' + latestName + '</td><td>' + perf + '</td></tr>';
+      }).join('');
+    }
+ 
+    // Teacher activity
+    document.getElementById('activityRows').innerHTML = allTeachers.map(t => {
+      const classAssessments = allAssessments.filter(a => a.class_name === t.class_name);
+      const ids = classAssessments.map(a => a.id);
+      const rel = allScores.filter(r => ids.includes(r.assessment_id) && r.created_at);
+      let last = '—';
+      if (rel.length) last = new Date(rel.reduce((max, r) => r.created_at > max ? r.created_at : max, rel[0].created_at)).toLocaleDateString();
+      return '<tr><td><strong>' + escapeHtml(t.name) + '</strong></td><td>' + escapeHtml(t.class_name || '—') + '</td><td>' + classAssessments.length + '</td><td>' + last + '</td></tr>';
+    }).join('');
+ 
+    // School-wide early warning
+    const flagged = [];
+    classNames.forEach(className => {
+      const ca = allAssessments.filter(a => a.class_name === className).sort((a, b) => a.id - b.id);
+      if (ca.length < 2) return;
+      const latest = ca[ca.length - 1], previous = ca[ca.length - 2];
+      const lt = latest.topics.split(',').map(t => t.trim()).filter(Boolean);
+      const pt = previous.topics.split(',').map(t => t.trim()).filter(Boolean);
+      allStudents.filter(s => s.class_name === className).forEach(s => {
+        const currAvg = avgFromScores(allScores.filter(r => r.assessment_id === latest.id && r.student_id === s.id), lt);
+        const prevAvg = avgFromScores(allScores.filter(r => r.assessment_id === previous.id && r.student_id === s.id), pt);
+        if (currAvg !== null && prevAvg !== null && currAvg - prevAvg <= -5) flagged.push({ name: s.name, className, prevAvg, currAvg, diff: currAvg - prevAvg });
+      });
+    });
+    const warningRows = document.getElementById('warningRows'), warningEmpty = document.getElementById('warningEmptyNote');
+    if (!flagged.length) { warningRows.innerHTML = ''; warningEmpty.classList.remove('hidden'); }
+    else { warningEmpty.classList.add('hidden'); warningRows.innerHTML = flagged.map(f => '<div class="warning-row"><span><strong>' + escapeHtml(f.name) + '</strong> — ' + escapeHtml(f.className) + '</span><span class="warning-detail">' + f.prevAvg + ' → ' + f.currAvg + ' (down ' + Math.abs(f.diff) + ')</span></div>').join(''); }
+ 
+    // Ask about a topic — populate dropdown
+    const topicSet = new Set();
+    classNames.forEach(className => {
+      const ca = allAssessments.filter(a => a.class_name === className).sort((a, b) => a.id - b.id);
+      if (!ca.length) return;
+      ca[ca.length - 1].topics.split(',').map(t => t.trim()).filter(Boolean).forEach(t => topicSet.add(t));
+    });
+    const select = document.getElementById('askTopicSelect');
+    select.innerHTML = '<option value="">— Choose a topic —</option>' + [...topicSet].sort().map(t => '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>').join('');
+  }
+ 
+  function askWhoNeedsHelp() {
+    const topic = document.getElementById('askTopicSelect').value;
+    const results = document.getElementById('askResults');
+    if (!topic) { results.innerHTML = ''; return; }
+    const classNames = classNamesList();
+    const struggling = [];
+    classNames.forEach(className => {
+      const ca = allAssessments.filter(a => a.class_name === className && a.topics.split(',').map(t => t.trim()).includes(topic)).sort((a, b) => a.id - b.id);
+      if (!ca.length) return;
+      const latest = ca[ca.length - 1];
+      allStudents.filter(s => s.class_name === className).forEach(s => {
+        const row = allScores.find(r => r.assessment_id === latest.id && r.student_id === s.id && r.topic === topic);
+        if (row && row.score != null && getBand(row.score).concern) struggling.push({ name: s.name, className, score: row.score });
+      });
+    });
+    if (!struggling.length) { results.innerHTML = '<div class="empty-note">No students are currently flagged for ' + escapeHtml(topic) + '.</div>'; return; }
+    struggling.sort((a, b) => a.score - b.score);
+    results.innerHTML = struggling.map(s => '<div class="ask-result-row"><span>' + escapeHtml(s.name) + ' — ' + escapeHtml(s.className) + '</span><span class="val">' + s.score + '</span></div>').join('');
+  }
+ 
+  // ---------- Settings tab ----------
+  const colorOptions = ['#2D6CDF', '#EF4444', '#22A06B', '#8B5CF6', '#FFB020', '#EC4899'];
+  function renderSettingsTab() {
+    const row = document.getElementById('swatchRow');
+    row.innerHTML = colorOptions.map(c => '<div class="swatch ' + (c === currentSchool.theme_color ? 'selected' : '') + '" style="background:' + c + '" onclick="chooseColor(\'' + c + '\')"></div>').join('');
+  }
+  async function chooseColor(color) {
+    document.getElementById('topbarEl').style.background = color;
+    renderSettingsTab.call(null);
+    const { error } = await supabaseClient.from('schools').update({ theme_color: color }).eq('id', currentSchool.id);
+    const msg = document.getElementById('themeMsg');
+    if (!error) { currentSchool.theme_color = color; renderSettingsTab(); msg.className = 'success'; msg.textContent = 'Saved — applies across your account.'; }
+  }
+  async function changePassword() {
+    const newPassword = document.getElementById('newPassword').value;
+    const msg = document.getElementById('pwMsg');
+    if (!newPassword || newPassword.length < 6) { msg.className = 'error'; msg.textContent = 'Password must be at least 6 characters.'; return; }
+    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+    if (error) { msg.className = 'error'; msg.textContent = 'Error: ' + error.message; }
+    else { msg.className = 'success'; msg.textContent = 'Password updated successfully.'; document.getElementById('newPassword').value = ''; }
   }
  
   async function logout() {
@@ -270,156 +597,9 @@
     window.location.href = 'login.html';
   }
  
-  loadDashboard();
-</script>
- 
-<!-- Floating Quick Actions -->
-<div class="fab-wrap no-print">
-  <div class="fab-menu" id="fabMenu">
-    <a class="fab-item" href="dashboard.html" style="--i:4"><span class="fab-emoji">🏫</span><span class="fab-label">Dashboard</span></a>
-    <a class="fab-item" href="teachers.html#add-teacher" style="--i:3"><span class="fab-emoji">🧑‍🏫</span><span class="fab-label">Add Teacher</span></a>
-    <a class="fab-item" href="all-students.html" style="--i:2"><span class="fab-emoji">🧑‍🎓</span><span class="fab-label">Students</span></a>
-    <a class="fab-item" href="school-overview.html" style="--i:1"><span class="fab-emoji">📈</span><span class="fab-label">School Overview</span></a>
-  </div>
-  <button class="fab-main" id="fabMain" onclick="toggleFab()">
-    <span id="fabIcon">✦</span>
-    <span class="fab-badge hidden" id="fabBadge">0</span>
-  </button>
-</div>
- 
-<style>
-  .fab-badge {
-    position: absolute; top: -4px; right: -4px; background: var(--red, #EF4444); color: #FFFFFF;
-    font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center; padding: 0 5px;
-    box-shadow: 0 0 0 2px var(--paper, #FFFFFF);
-  }
-  .fab-badge.hidden { display: none; }
-  .fab-wrap { position: fixed; right: 22px; bottom: 26px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; }
-  .fab-main {
-    position: relative;
-    width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
-    background: radial-gradient(circle at 30% 30%, #FFC24D, #FFB020);
-    color: #FFFFFF; font-size: 26px; box-shadow: 0 4px 14px rgba(176,130,43,0.45);
-    display: flex; align-items: center; justify-content: center;
-    animation: fab-breathe 2.6s ease-in-out infinite;
-    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-  .fab-main:hover { transform: scale(1.08); }
-  .fab-wrap.open .fab-main { transform: rotate(135deg) scale(1.05); animation: none; }
-  @keyframes fab-breathe {
-    0%, 100% { transform: scale(1); box-shadow: 0 4px 14px rgba(176,130,43,0.45); }
-    50% { transform: scale(1.06); box-shadow: 0 6px 20px rgba(176,130,43,0.6); }
-  }
- 
-  .fab-menu { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-bottom: 14px; }
-  .fab-item {
-    display: flex; align-items: center; gap: 10px; text-decoration: none;
-    background: var(--sidebar-color, #2D6CDF); color: #FFFFFF; padding: 9px 16px 9px 9px;
-    border-radius: 30px; box-shadow: 0 3px 10px rgba(22,40,58,0.28); font-size: 13px; font-weight: 500;
-    opacity: 0; transform: translateY(14px) scale(0.7); pointer-events: none;
-    transition: opacity 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
-    transition-delay: calc(var(--i) * 0.03s);
-  }
-  .fab-wrap.open .fab-item { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-  .fab-item:hover { filter: brightness(1.12); transform: translateY(0) scale(1.04); }
-  .fab-emoji {
-    width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.18);
-    display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
-  }
- 
-  @keyframes target-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(176,130,43,0.55); }
-    70% { box-shadow: 0 0 0 14px rgba(176,130,43,0); }
-    100% { box-shadow: 0 0 0 0 rgba(176,130,43,0); }
-  }
-  .fab-target-highlight { animation: target-pulse 1.1s ease-out 2; }
- 
-  @media print { .fab-wrap { display: none !important; } }
-</style>
- 
-<script>
-  function toggleFab() {
-    document.querySelector('.fab-wrap').classList.toggle('open');
-    document.getElementById('fabIcon').textContent =
-      document.querySelector('.fab-wrap').classList.contains('open') ? '×' : '✦';
-  }
-  document.addEventListener('click', function (e) {
-    const wrap = document.querySelector('.fab-wrap');
-    if (wrap.classList.contains('open') && !wrap.contains(e.target)) {
-      wrap.classList.remove('open');
-      document.getElementById('fabIcon').textContent = '✦';
-    }
-  });
-  window.addEventListener('load', function () {
-    if (window.location.hash) {
-      const target = document.querySelector(window.location.hash);
-      if (target) {
-        setTimeout(function () {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          target.classList.add('fab-target-highlight');
-        }, 200);
-      }
-    }
-  });
- 
-  // Notification badge: school-wide count of students flagged by Early
-  // Warning, across every class. Self-contained scope to avoid colliding
-  // with identifiers the page itself already defines.
-  (function () {
-    var fabBands = [
-      { min: 70, concern: false }, { min: 60, concern: false }, { min: 50, concern: false },
-      { min: 40, concern: true }, { min: 0, concern: true }
-    ];
-    function fabAvg(scoreRows, topics) {
-      var vals = scoreRows.filter(function (r) { return topics.indexOf(r.topic) !== -1; }).map(function (r) { return r.score; }).filter(function (v) { return v != null; });
-      if (!vals.length) return null;
-      return Math.round(vals.reduce(function (a, b) { return a + b; }, 0) / vals.length);
-    }
- 
-    async function updateFabBadge() {
-      if (typeof supabaseClient === 'undefined') return;
-      try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return;
-        const { data: school } = await supabaseClient.from('schools').select('*').eq('admin_user_id', user.id).maybeSingle();
-        if (!school) return;
- 
-        const [{ data: students }, { data: assessments }, { data: scores }] = await Promise.all([
-          supabaseClient.from('students').select('*').eq('school_id', school.id),
-          supabaseClient.from('assessments').select('*').eq('school_id', school.id),
-          supabaseClient.from('scores').select('*').eq('school_id', school.id)
-        ]);
- 
-        const classNames = [...new Set((students || []).map(function (s) { return s.class_name; }).filter(Boolean))];
-        var flaggedCount = 0;
- 
-        classNames.forEach(function (className) {
-          const classAssessments = (assessments || []).filter(function (a) { return a.class_name === className; }).sort(function (a, b) { return a.id - b.id; });
-          if (classAssessments.length < 2) return;
-          const latest = classAssessments[classAssessments.length - 1];
-          const previous = classAssessments[classAssessments.length - 2];
-          const latestTopics = latest.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
-          const prevTopics = previous.topics.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
- 
-          (students || []).filter(function (s) { return s.class_name === className; }).forEach(function (s) {
-            const currAvg = fabAvg((scores || []).filter(function (r) { return r.assessment_id === latest.id && r.student_id === s.id; }), latestTopics);
-            const prevAvg = fabAvg((scores || []).filter(function (r) { return r.assessment_id === previous.id && r.student_id === s.id; }), prevTopics);
-            if (currAvg !== null && prevAvg !== null && currAvg - prevAvg <= -5) flaggedCount++;
-          });
-        });
- 
-        const badge = document.getElementById('fabBadge');
-        if (flaggedCount > 0) {
-          badge.textContent = flaggedCount;
-          badge.classList.remove('hidden');
-        }
-      } catch (e) { /* badge is best-effort, fail silently */ }
-    }
- 
-    updateFabBadge();
-  })();
+  init();
 </script>
  
 </body>
 </html>
+ 
