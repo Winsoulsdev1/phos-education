@@ -24,6 +24,23 @@
   .logout-btn { background: rgba(255,255,255,0.15); border: none; color: #FFFFFF; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
  
   .tabs { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 0; }
+  .tile-nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 24px; }
+  .nav-tile {
+    background: var(--paper); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 6px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer; box-shadow: 0 2px 6px rgba(30,41,59,0.06);
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .nav-tile:hover { transform: translateY(-2px) scale(1.03); }
+  .nav-tile.active { border-color: var(--sidebar-color, #2D6CDF); box-shadow: 0 0 0 2px var(--sidebar-color, #2D6CDF); }
+  .nav-tile-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .nav-tile-label { font-size: 11px; font-weight: 600; text-align: center; line-height: 1.2; }
+  .icon-blue { background: #E3EEFF; }
+  .icon-teal { background: #E3EEFF; }
+  .icon-gold { background: #FFF4DA; }
+  .icon-sage { background: #E1F8ED; }
+  .icon-plum { background: #F1EBFE; }
+ 
   .tab-btn {
     background: none; border: none; color: #D6E3FF; padding: 10px 14px; font-size: 12.5px; font-weight: 600;
     cursor: pointer; white-space: nowrap; border-bottom: 3px solid transparent;
@@ -112,16 +129,31 @@
       <div class="brand">SchoolOS</div>
       <button class="logout-btn" onclick="logout()">Log Out</button>
     </div>
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="dash">Dashboard</button>
-      <button class="tab-btn" data-tab="teachers">Teachers</button>
-      <button class="tab-btn" data-tab="students">Students</button>
-      <button class="tab-btn" data-tab="overview">School Overview</button>
-      <button class="tab-btn" data-tab="settings">Settings</button>
-    </div>
   </div>
  
   <div class="main">
+    <div class="tile-nav">
+      <button class="nav-tile active" data-tab="dash">
+        <span class="nav-tile-icon icon-blue">🏠</span>
+        <span class="nav-tile-label">Dashboard</span>
+      </button>
+      <button class="nav-tile" data-tab="teachers">
+        <span class="nav-tile-icon icon-teal">🧑‍🏫</span>
+        <span class="nav-tile-label">Teachers</span>
+      </button>
+      <button class="nav-tile" data-tab="students">
+        <span class="nav-tile-icon icon-gold">🧑‍🎓</span>
+        <span class="nav-tile-label">Students</span>
+      </button>
+      <button class="nav-tile" data-tab="overview">
+        <span class="nav-tile-icon icon-sage">📈</span>
+        <span class="nav-tile-label">Overview</span>
+      </button>
+      <button class="nav-tile" data-tab="settings">
+        <span class="nav-tile-icon icon-plum">⚙️</span>
+        <span class="nav-tile-label">Settings</span>
+      </button>
+    </div>
  
     <!-- DASHBOARD TAB -->
     <div class="tab-section active" id="tab-dash">
@@ -296,11 +328,11 @@
   let allTeachers = [], allStudents = [], allAssessments = [], allScores = [];
  
   // ---------- Tabs ----------
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  document.querySelectorAll('.nav-tile').forEach(btn => {
     btn.addEventListener('click', () => activateTab(btn.getAttribute('data-tab')));
   });
   function activateTab(name) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === name));
+    document.querySelectorAll('.nav-tile').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === name));
     document.querySelectorAll('.tab-section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -602,4 +634,3 @@
  
 </body>
 </html>
- 
